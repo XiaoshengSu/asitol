@@ -157,44 +157,26 @@ class SVGRenderer {
           return 'start';
         })
         .attr('x', d => {
-          // 对于圆形布局，根据节点位置和角度设置x坐标
           if (layoutResult.type === 'circular') {
-            const x = d[1].x;
-            const y = d[1].y;
-            const angle = Math.atan2(y - centerY, x - centerX);
-            
-            // 沿径向向外偏移，确保标签朝外，形成圆环
-            const offset = this.getCircularLabelOffset(isLargeTree);
-            return x + offset * Math.cos(angle);
+            return this.getCircularLabelPosition(d[1], centerX, centerY, this.getCircularLabelOffset(isLargeTree)).x;
           }
           return d[1].x + 8;
         })
         .attr('y', d => {
-          // 对于圆形布局，根据节点位置和角度设置y坐标
           if (layoutResult.type === 'circular') {
-            const x = d[1].x;
-            const y = d[1].y;
-            const angle = Math.atan2(y - centerY, x - centerX);
-            
-            // 沿径向向外偏移，确保标签朝外，形成圆环
-            const offset = this.getCircularLabelOffset(isLargeTree);
-            return y + offset * Math.sin(angle);
+            return this.getCircularLabelPosition(d[1], centerX, centerY, this.getCircularLabelOffset(isLargeTree)).y;
           }
           return d[1].y + 3;
         })
         .attr('transform', d => {
-          // 对于圆形布局，根据节点角度旋转文本
           if (layoutResult.type === 'circular') {
-            const x = d[1].x;
-            const y = d[1].y;
-            const angle = Math.atan2(y - centerY, x - centerX);
-            
-            // 径向排版（与圆环半径同向），并在左半圈翻转，保持可读性
+            const angle = this.getCircularLabelAngle(d[1], centerX, centerY);
+            const labelPos = this.getCircularLabelPosition(d[1], centerX, centerY, this.getCircularLabelOffset(isLargeTree));
             let rotation = angle * (180 / Math.PI);
             if (Math.abs(angle) > Math.PI / 2) {
               rotation += 180;
             }
-            return `rotate(${rotation}, ${x}, ${y})`;
+            return `rotate(${rotation}, ${labelPos.x}, ${labelPos.y})`;
           }
           return '';
         })
@@ -272,28 +254,19 @@ class SVGRenderer {
           }
         })
         .attr('x', d => {
-          const x = d[1].x;
-          const y = d[1].y;
-          const angle = Math.atan2(y - centerY, x - centerX);
-          const offset = this.getCircularLabelOffset(true);
-          return x + offset * Math.cos(angle);
+          return this.getCircularLabelPosition(d[1], centerX, centerY, this.getCircularLabelOffset(true)).x;
         })
         .attr('y', d => {
-          const x = d[1].x;
-          const y = d[1].y;
-          const angle = Math.atan2(y - centerY, x - centerX);
-          const offset = this.getCircularLabelOffset(true);
-          return y + offset * Math.sin(angle);
+          return this.getCircularLabelPosition(d[1], centerX, centerY, this.getCircularLabelOffset(true)).y;
         })
         .attr('transform', d => {
-          const x = d[1].x;
-          const y = d[1].y;
-          const angle = Math.atan2(y - centerY, x - centerX);
+          const angle = this.getCircularLabelAngle(d[1], centerX, centerY);
+          const labelPos = this.getCircularLabelPosition(d[1], centerX, centerY, this.getCircularLabelOffset(true));
           let rotation = angle * (180 / Math.PI);
           if (Math.abs(angle) > Math.PI / 2) {
             rotation += 180;
           }
-          return `rotate(${rotation}, ${x}, ${y})`;
+          return `rotate(${rotation}, ${labelPos.x}, ${labelPos.y})`;
         })
         .text(d => {
           const node = this.findNodeById(tree.root, d[0]);
@@ -302,6 +275,24 @@ class SVGRenderer {
     }
   }
 
+
+
+  private getCircularLabelAngle(pos: { x: number; y: number }, centerX: number, centerY: number): number {
+    return Math.atan2(pos.y - centerY, pos.x - centerX);
+  }
+
+  private getCircularLabelPosition(
+    pos: { x: number; y: number },
+    centerX: number,
+    centerY: number,
+    offset: number
+  ): { x: number; y: number } {
+    const angle = this.getCircularLabelAngle(pos, centerX, centerY);
+    return {
+      x: pos.x + offset * Math.cos(angle),
+      y: pos.y + offset * Math.sin(angle)
+    };
+  }
 
   private selectCircularLabels(
     nodes: Array<[string, { x: number; y: number }]>,
