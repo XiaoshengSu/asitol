@@ -13,6 +13,7 @@
   let renderMode = 'svg';
   let showLabels = true;
   let branchColor = '#8f96a3';
+  let branchColorMode: 'single' | 'clade' = 'clade';
 
   const scientificPalettes = [
     { name: 'Slate', color: '#8f96a3' },
@@ -28,6 +29,7 @@
     renderMode = $uiStore.renderMode;
     showLabels = $uiStore.showLabels;
     branchColor = $uiStore.branchColor;
+    branchColorMode = $uiStore.branchColorMode;
   });
 
   // 放大
@@ -65,6 +67,10 @@
   // 设置树枝颜色
   const setBranchColor = (color: string) => {
     uiStore.setBranchColor(color);
+  };
+
+  const setBranchColorMode = (mode: 'single' | 'clade') => {
+    uiStore.setBranchColorMode(mode);
   };
 
   // 更改布局类型
@@ -138,6 +144,22 @@
   <!-- 树枝配色 -->
   <div class="mb-4">
     <label class="block text-xs text-gray-400 mb-1">树枝配色（科研色系）</label>
+    <div class="grid grid-cols-2 gap-2 mb-2">
+      <button
+        class="text-xs bg-gray-700 hover:bg-gray-600 text-white py-1 px-2 rounded border border-gray-600"
+        style="opacity: {branchColorMode === 'clade' ? 1 : 0.6}"
+        on:click={() => setBranchColorMode('clade')}
+      >
+        分组配色
+      </button>
+      <button
+        class="text-xs bg-gray-700 hover:bg-gray-600 text-white py-1 px-2 rounded border border-gray-600"
+        style="opacity: {branchColorMode === 'single' ? 1 : 0.6}"
+        on:click={() => setBranchColorMode('single')}
+      >
+        统一配色
+      </button>
+    </div>
     <div class="grid grid-cols-3 gap-2 mb-2">
       {#each scientificPalettes as palette}
         <button

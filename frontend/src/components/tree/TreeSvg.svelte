@@ -18,6 +18,7 @@
   let zoom: number = 1;
   let pan: { x: number; y: number } = { x: 0, y: 0 };
   let branchColor = '#8f96a3';
+  let branchColorMode: 'single' | 'clade' = 'clade';
   let isDragging: boolean = false;
   let lastMouseX: number = 0;
   let lastMouseY: number = 0;
@@ -37,6 +38,7 @@
     zoom = $uiStore.zoom;
     pan = $uiStore.pan;
     branchColor = $uiStore.branchColor;
+    branchColorMode = $uiStore.branchColorMode;
     // 当showLabels或branchColor变化时重新渲染树
     if (renderer && tree && layoutResult) {
       render();
@@ -52,6 +54,7 @@
       backgroundColor: '#242424',
       nodeColor: '#fff',
       branchColor,
+      branchColorMode,
       nodeSize: 4,
       branchWidth: 1
     };
@@ -74,6 +77,7 @@
       backgroundColor: '#242424',
       nodeColor: '#fff',
       branchColor,
+      branchColorMode,
       nodeSize: 4,
       branchWidth: 1
     };

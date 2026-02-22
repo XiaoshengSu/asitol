@@ -22,6 +22,7 @@ export interface RenderConfig {
   backgroundColor?: string;
   nodeColor?: string;
   branchColor?: string;
+  branchColorMode?: 'single' | 'clade';
   nodeSize?: number;
   branchWidth?: number;
 }

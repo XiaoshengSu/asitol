@@ -15,6 +15,7 @@ const createUIStore = () => {
     searchQuery: string;
     showLabels: boolean;
     branchColor: string;
+    branchColorMode: 'single' | 'clade';
   }>({
     renderMode: 'svg',
     sidebarVisible: true,
@@ -25,7 +26,8 @@ const createUIStore = () => {
     selectedNodes: [],
     searchQuery: '',
     showLabels: true,
-    branchColor: '#8f96a3'
+    branchColor: '#8f96a3',
+    branchColorMode: 'clade'
   });
 
   return {
@@ -124,6 +126,8 @@ const createUIStore = () => {
     setShowLabels: (show: boolean) => update(state => ({ ...state, showLabels: show })),
     // 设置树枝颜色
     setBranchColor: (color: string) => update(state => ({ ...state, branchColor: color })),
+    // 设置树枝配色模式
+    setBranchColorMode: (mode: 'single' | 'clade') => update(state => ({ ...state, branchColorMode: mode })),
     // 重置状态
     reset: () => set({
       renderMode: 'svg',
@@ -135,7 +139,8 @@ const createUIStore = () => {
       selectedNodes: [],
       searchQuery: '',
       showLabels: true,
-      branchColor: '#8f96a3'
+      branchColor: '#8f96a3',
+      branchColorMode: 'clade'
     })
   };
 };

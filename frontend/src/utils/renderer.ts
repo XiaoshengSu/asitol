@@ -1,7 +1,60 @@
 import * as d3 from 'd3';
-import type { Tree, LayoutResult } from '../types/tree';
+import type { Tree, LayoutResult, TreeNode } from '../types/tree';
 import type { RenderConfig } from '../types/layout';
 import { uiStore } from '../stores/uiStore';
+
+const DEFAULT_CLADE_PALETTE = [
+  '#4E8B8B',
+  '#6574B8',
+  '#7E8B5B',
+  '#A46D7C',
+  '#B38A4C',
+  '#8f96a3',
+  '#5C7FA3',
+  '#C07F5A',
+  '#5F8B74',
+  '#9B7FAE'
+];
+
+const countLeaves = (node: TreeNode): number => {
+  if (!node.children || node.children.length === 0) return 1;
+  return node.children.reduce((sum, child) => sum + countLeaves(child), 0);
+};
+
+const getCladePalette = (count: number): string[] => {
+  if (count <= DEFAULT_CLADE_PALETTE.length) {
+    return DEFAULT_CLADE_PALETTE.slice(0, count);
+  }
+  const colors: string[] = [];
+  for (let i = 0; i < count; i += 1) {
+    colors.push(d3.interpolateRainbow(i / Math.max(1, count)));
+  }
+  return colors;
+};
+
+const assignCladeColor = (node: TreeNode, color: string, map: Map<string, string>): void => {
+  map.set(node.id, color);
+  if (node.children) {
+    node.children.forEach(child => assignCladeColor(child, color, map));
+  }
+};
+
+const buildCladeColorMap = (tree: Tree): Map<string, string> => {
+  const map = new Map<string, string>();
+  const children = tree.root.children || [];
+  if (children.length === 0) return map;
+
+  const ordered = children
+    .slice()
+    .sort((a, b) => countLeaves(b) - countLeaves(a));
+  const palette = getCladePalette(ordered.length);
+
+  ordered.forEach((child, index) => {
+    assignCladeColor(child, palette[index], map);
+  });
+
+  return map;
+};
 
 // SVG渲染器
 class SVGRenderer {
@@ -42,6 +95,8 @@ class SVGRenderer {
     // 计算节点数量，根据节点数量调整渲染参数
     const nodeCount = Object.keys(layoutResult.nodes).length;
     const isLargeTree = nodeCount > 500;
+    const useCladeColors = config.branchColorMode !== 'single' && (tree.root.children?.length || 0) > 1;
+    const cladeColorMap = useCladeColors ? buildCladeColorMap(tree) : null;
     
     // 根据树的大小调整节点大小和线宽
     const nodeSize = isLargeTree ? Math.max(1, (config.nodeSize || 4) * 0.6) : (config.nodeSize || 4);
@@ -49,7 +104,7 @@ class SVGRenderer {
 
     // 对于超大型树，使用简化渲染
     if (nodeCount > 1000) {
-      this.renderLargeTree(tree, layoutResult, config, centerX, centerY, nodeSize, branchWidth);
+      this.renderLargeTree(tree, layoutResult, config, centerX, centerY, nodeSize, branchWidth, cladeColorMap);
       return;
     }
 
@@ -94,7 +149,12 @@ class SVGRenderer {
           return `M ${source.x} ${source.y} L ${target.x} ${target.y}`;
         }
       })
-      .attr('stroke', config.branchColor || '#888')
+      .attr('stroke', d => {
+        if (cladeColorMap) {
+          return cladeColorMap.get(d.target) || cladeColorMap.get(d.source) || (config.branchColor || '#888');
+        }
+        return config.branchColor || '#888';
+      })
       .attr('stroke-width', branchWidth)
       .attr('stroke-opacity', layoutResult.type === 'circular' ? 0.75 : 1)
       .attr('fill', 'none');
@@ -212,7 +272,16 @@ class SVGRenderer {
     }
   }
 
-  private renderLargeTree(tree: Tree, layoutResult: LayoutResult, config: RenderConfig, centerX: number, centerY: number, nodeSize: number, branchWidth: number): void {
+  private renderLargeTree(
+    tree: Tree,
+    layoutResult: LayoutResult,
+    config: RenderConfig,
+    centerX: number,
+    centerY: number,
+    nodeSize: number,
+    branchWidth: number,
+    cladeColorMap: Map<string, string> | null
+  ): void {
     // 只绘制连接线和叶节点，跳过内部节点的绘制
     // 绘制连接线
     this.g.selectAll('.link')
@@ -233,7 +302,12 @@ class SVGRenderer {
           return `M ${source.x} ${source.y} L ${target.x} ${target.y}`;
         }
       })
-      .attr('stroke', config.branchColor || '#888')
+      .attr('stroke', d => {
+        if (cladeColorMap) {
+          return cladeColorMap.get(d.target) || cladeColorMap.get(d.source) || (config.branchColor || '#888');
+        }
+        return config.branchColor || '#888';
+      })
       .attr('stroke-width', branchWidth * 0.8)
       .attr('fill', 'none');
 
@@ -421,11 +495,15 @@ class CanvasRenderer {
     const branchWidth = Math.max(0.5, (config.branchWidth || 1) * currentZoom);
 
     // 绘制连接线
-    this.ctx.strokeStyle = config.branchColor || '#888';
+    const useCladeColors = config.branchColorMode !== 'single' && (tree.root.children?.length || 0) > 1;
+    const cladeColorMap = useCladeColors ? buildCladeColorMap(tree) : null;
     this.ctx.lineWidth = branchWidth;
     layoutResult.links.forEach(link => {
       const source = layoutResult.nodes[link.source];
       const target = layoutResult.nodes[link.target];
+      this.ctx.strokeStyle = cladeColorMap
+        ? (cladeColorMap.get(link.target) || cladeColorMap.get(link.source) || (config.branchColor || '#888'))
+        : (config.branchColor || '#888');
       
       // 视图裁剪：只绘制视口内的连接线
       if (this.isInViewport(source) || this.isInViewport(target)) {
