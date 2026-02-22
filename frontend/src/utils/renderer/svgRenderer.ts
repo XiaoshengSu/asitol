@@ -2,7 +2,7 @@ import * as d3 from 'd3';
 import type { Tree, LayoutResult } from '../../types/tree';
 import type { RenderConfig } from '../../types/layout';
 import { uiStore } from '../../stores/uiStore';
-import { buildCladeColorMap } from './colors';
+import { buildCladeColorMap, ensureContrast } from './colors';
 import { findNodeById, isLeafNode } from './treeUtils';
 
 export class SVGRenderer {
@@ -93,9 +93,10 @@ export class SVGRenderer {
       })
       .attr('stroke', d => {
         if (cladeColorMap) {
-          return cladeColorMap.get(d.target) || cladeColorMap.get(d.source) || (config.branchColor || '#888');
+          const color = cladeColorMap.get(d.target) || cladeColorMap.get(d.source) || (config.branchColor || '#888');
+          return ensureContrast(color);
         }
-        return config.branchColor || '#888';
+        return ensureContrast(config.branchColor || '#888');
       })
       .attr('stroke-width', branchWidth)
       .attr('stroke-opacity', layoutResult.type === 'circular' ? 0.75 : 1)
@@ -218,9 +219,10 @@ export class SVGRenderer {
       })
       .attr('stroke', d => {
         if (cladeColorMap) {
-          return cladeColorMap.get(d.target) || cladeColorMap.get(d.source) || (config.branchColor || '#888');
+          const color = cladeColorMap.get(d.target) || cladeColorMap.get(d.source) || (config.branchColor || '#888');
+          return ensureContrast(color);
         }
-        return config.branchColor || '#888';
+        return ensureContrast(config.branchColor || '#888');
       })
       .attr('stroke-width', branchWidth * 0.8)
       .attr('fill', 'none');
