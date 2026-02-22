@@ -88,9 +88,18 @@ class SVGRenderer {
       .attr('stroke-width', branchWidth)
       .attr('fill', 'none');
 
+    const allNodes = Object.entries(layoutResult.nodes);
+    const circularLeafNodes = layoutResult.type === 'circular'
+      ? allNodes.filter(([id]) => this.isLeafNode(tree.root, id))
+      : [];
+
+    const nodeData = layoutResult.type === 'circular' && circularLeafNodes.length > 300
+      ? allNodes.filter(([id]) => !this.isLeafNode(tree.root, id))
+      : allNodes;
+
     // 绘制节点
     this.g.selectAll('.node')
-      .data(Object.entries(layoutResult.nodes))
+      .data(nodeData)
       .enter()
       .append('circle')
       .attr('class', 'node')
@@ -105,18 +114,20 @@ class SVGRenderer {
 
     // 绘制节点标签
     if (showLabels) {
-      // 对于圆形布局，只显示叶节点的标签，形成完美圆环
-      const labelData = layoutResult.type === 'circular' 
-        ? Object.entries(layoutResult.nodes).filter(([id]) => this.isLeafNode(tree.root, id))
-        : Object.entries(layoutResult.nodes);
-      
+      // 对于圆形布局，只显示叶节点标签并做密度采样，避免外圈完全糊成一团
+      const labelData = layoutResult.type === 'circular'
+        ? this.selectCircularLabels(circularLeafNodes, centerX, centerY, isLargeTree)
+        : allNodes;
+
       this.g.selectAll('.label')
         .data(labelData)
         .enter()
         .append('text')
         .attr('class', 'label')
         .attr('fill', '#fff')
-        .attr('font-size', isLargeTree ? '10px' : '12px')
+        .attr('font-size', layoutResult.type === 'circular'
+          ? this.getCircularLabelFontSize(labelData.length, isLargeTree)
+          : (isLargeTree ? '10px' : '12px'))
         .attr('text-anchor', d => {
           // 对于圆形布局，根据节点位置设置文本锚点
           if (layoutResult.type === 'circular') {
@@ -141,7 +152,7 @@ class SVGRenderer {
             const angle = Math.atan2(y - centerY, x - centerX);
             
             // 沿径向向外偏移，确保标签朝外，形成圆环
-            const offset = isLargeTree ? 12 : 15;
+            const offset = this.getCircularLabelOffset(isLargeTree);
             return x + offset * Math.cos(angle);
           }
           return d[1].x + 8;
@@ -154,7 +165,7 @@ class SVGRenderer {
             const angle = Math.atan2(y - centerY, x - centerX);
             
             // 沿径向向外偏移，确保标签朝外，形成圆环
-            const offset = isLargeTree ? 12 : 15;
+            const offset = this.getCircularLabelOffset(isLargeTree);
             return y + offset * Math.sin(angle);
           }
           return d[1].y + 3;
@@ -210,11 +221,12 @@ class SVGRenderer {
       .attr('stroke-width', branchWidth * 0.8)
       .attr('fill', 'none');
 
-    // 只绘制叶节点
+    // 只绘制叶节点（超大圆形树不再绘制叶节点圆点，避免外环过粗）
     const leafNodes = Object.entries(layoutResult.nodes).filter(([id]) => this.isLeafNode(tree.root, id));
-    
+    const largeTreeNodeData = layoutResult.type === 'circular' && leafNodes.length > 300 ? [] : leafNodes;
+
     this.g.selectAll('.node')
-      .data(leafNodes)
+      .data(largeTreeNodeData)
       .enter()
       .append('circle')
       .attr('class', 'node')
@@ -229,13 +241,15 @@ class SVGRenderer {
 
     // 只绘制叶节点的标签
     if (showLabels && layoutResult.type === 'circular') {
+      const sampledLabels = this.selectCircularLabels(leafNodes, centerX, centerY, true);
+
       this.g.selectAll('.label')
-        .data(leafNodes)
+        .data(sampledLabels)
         .enter()
         .append('text')
         .attr('class', 'label')
         .attr('fill', '#fff')
-        .attr('font-size', '8px')
+        .attr('font-size', this.getCircularLabelFontSize(leafNodes.length, true))
         .attr('text-anchor', d => {
           const x = d[1].x;
           const y = d[1].y;
@@ -251,14 +265,14 @@ class SVGRenderer {
           const x = d[1].x;
           const y = d[1].y;
           const angle = Math.atan2(y - centerY, x - centerX);
-          const offset = 10;
+          const offset = this.getCircularLabelOffset(true);
           return x + offset * Math.cos(angle);
         })
         .attr('y', d => {
           const x = d[1].x;
           const y = d[1].y;
           const angle = Math.atan2(y - centerY, x - centerX);
-          const offset = 10;
+          const offset = this.getCircularLabelOffset(true);
           return y + offset * Math.sin(angle);
         })
         .attr('transform', d => {
@@ -278,6 +292,36 @@ class SVGRenderer {
           return node?.name || '';
         });
     }
+  }
+
+
+  private selectCircularLabels(
+    nodes: Array<[string, { x: number; y: number }]>,
+    centerX: number,
+    centerY: number,
+    isLargeTree: boolean
+  ): Array<[string, { x: number; y: number }]> {
+    if (nodes.length <= 240) return nodes;
+
+    const radius = nodes.reduce((sum, [, pos]) => sum + Math.hypot(pos.x - centerX, pos.y - centerY), 0) / nodes.length;
+    const minLabelArc = isLargeTree ? 14 : 20;
+    const targetCount = Math.max(120, Math.floor((2 * Math.PI * Math.max(1, radius)) / minLabelArc));
+    const step = Math.max(1, Math.ceil(nodes.length / targetCount));
+
+    return nodes
+      .slice()
+      .sort((a, b) => Math.atan2(a[1].y - centerY, a[1].x - centerX) - Math.atan2(b[1].y - centerY, b[1].x - centerX))
+      .filter((_, index) => index % step === 0);
+  }
+
+  private getCircularLabelFontSize(labelCount: number, isLargeTree: boolean): string {
+    if (labelCount > 800) return '6px';
+    if (labelCount > 400) return '7px';
+    return isLargeTree ? '8px' : '10px';
+  }
+
+  private getCircularLabelOffset(isLargeTree: boolean): number {
+    return isLargeTree ? 10 : 12;
   }
 
   private isLeafNode(node: any, id: string): boolean {
