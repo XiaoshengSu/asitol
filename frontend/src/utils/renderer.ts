@@ -79,7 +79,7 @@ class SVGRenderer {
             const midX = (source.x + target.x) / 2;
             const midY = (source.y + target.y) / 2;
             
-            // 先水平移动到中间点，再垂直移动到目标节点
+            // 先水平移动到中间点，再垂直移动到目标节点，形成矩阵分叉效果
             return `M ${source.x} ${source.y} L ${midX} ${source.y} L ${midX} ${target.y} L ${target.x} ${target.y}`;
           } else {
             // 对于外层节点，使用直线连接
@@ -111,8 +111,8 @@ class SVGRenderer {
 
     // 绘制节点标签
     if (showLabels) {
-      // 对于大型树，只显示叶节点的标签，形成完美圆环
-      const labelData = layoutResult.type === 'circular' && isLargeTree 
+      // 对于圆形布局，只显示叶节点的标签，形成完美圆环
+      const labelData = layoutResult.type === 'circular' 
         ? Object.entries(layoutResult.nodes).filter(([id]) => this.isLeafNode(tree.root, id))
         : Object.entries(layoutResult.nodes);
       

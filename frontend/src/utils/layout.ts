@@ -109,7 +109,7 @@ class CircularLayout implements LayoutAlgorithm {
       nodes[leaves[i].id] = { x, y };
     }
 
-    // 布局内部节点，使用基于角度的方法，内部使用矩形分叉
+    // 布局内部节点，使用基于角度和层次的方法，实现矩阵分叉效果
     this.layoutInternalNodes(tree.root, nodes, links, centerX, centerY, radius);
 
     return {
@@ -140,11 +140,9 @@ class CircularLayout implements LayoutAlgorithm {
   ): void {
     if (!node.children || node.children.length === 0) return;
 
-    // 计算子节点的边界角度和平均位置
+    // 计算子节点的边界角度
     let minAngle = Infinity;
     let maxAngle = -Infinity;
-    let sumX = 0;
-    let sumY = 0;
     let validChildren = 0;
 
     for (const child of node.children) {
@@ -153,14 +151,9 @@ class CircularLayout implements LayoutAlgorithm {
       
       // 确保子节点已经在nodes对象中
       if (nodes[child.id]) {
-        const childX = nodes[child.id].x;
-        const childY = nodes[child.id].y;
-        sumX += childX;
-        sumY += childY;
-        
-        const relX = childX - centerX;
-        const relY = childY - centerY;
-        const angle = Math.atan2(relY, relX);
+        const childX = nodes[child.id].x - centerX;
+        const childY = nodes[child.id].y - centerY;
+        const angle = Math.atan2(childY, childX);
         
         minAngle = Math.min(minAngle, angle);
         maxAngle = Math.max(maxAngle, angle);
@@ -173,20 +166,20 @@ class CircularLayout implements LayoutAlgorithm {
       // 计算内部节点的角度（子节点角度范围的中间值）
       const nodeAngle = (minAngle + maxAngle) / 2;
       
-      // 计算子节点的平均位置
-      const avgChildX = sumX / validChildren;
-      const avgChildY = sumY / validChildren;
-      
       // 计算子节点到中心的平均距离
-      const avgChildRadius = Math.sqrt(
-        Math.pow(avgChildX - centerX, 2) + Math.pow(avgChildY - centerY, 2)
-      );
+      let sumRadius = 0;
+      for (const child of node.children) {
+        if (nodes[child.id]) {
+          const childX = nodes[child.id].x - centerX;
+          const childY = nodes[child.id].y - centerY;
+          sumRadius += Math.sqrt(childX * childX + childY * childY);
+        }
+      }
+      const avgChildRadius = sumRadius / validChildren;
       
-      // 内部节点的半径比子节点小，形成层次感
-      // 确保内部节点更靠近中心，形成完美的圆环
-      // 对于大型树，增加内部节点与子节点的距离，减少重叠
-      // 调整比例以形成更明显的矩阵扩散效果
-      const nodeRadius = Math.max(50, avgChildRadius * 0.4);
+      // 计算内部节点的半径，确保只有最外层树枝触达圆环
+      // 内部节点的半径应该比子节点小，形成层次感
+      const nodeRadius = Math.max(60, avgChildRadius * 0.3);
       
       // 计算内部节点的坐标
       const x = centerX + nodeRadius * Math.cos(nodeAngle);
