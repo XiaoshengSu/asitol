@@ -91,26 +91,34 @@ class CircularLayout implements LayoutAlgorithm {
 
     const centerX = width / 2;
     const centerY = height / 2;
-    const radius = Math.min(width, height) / 2 - padding;
+    const maxRadius = Math.min(width, height) / 2 - padding;
+    const minRadius = Math.max(8, padding * 0.5);
 
-    // 获取所有叶节点
     const leaves: TreeNode[] = [];
     this.collectLeaves(tree.root, leaves);
 
-    // 计算每个叶节点的角度
-    const leafCount = leaves.length;
+    const leafAngles = new Map<string, number>();
+    const leafCount = Math.max(1, leaves.length);
     const angleStep = (2 * Math.PI) / leafCount;
 
-    // 布局叶节点，沿圆周均匀分布
-    for (let i = 0; i < leafCount; i++) {
-      const angle = i * angleStep;
-      const x = centerX + radius * Math.cos(angle);
-      const y = centerY + radius * Math.sin(angle);
-      nodes[leaves[i].id] = { x, y };
-    }
+    leaves.forEach((leaf, index) => {
+      leafAngles.set(leaf.id, index * angleStep - Math.PI / 2);
+    });
 
-    // 布局内部节点，使用基于角度和层次的方法，实现矩阵分叉效果
-    this.layoutInternalNodes(tree.root, nodes, links, centerX, centerY, radius);
+    const rootDistance = this.maxDistanceToRoot(tree.root);
+
+    this.layoutByPolar(
+      tree.root,
+      centerX,
+      centerY,
+      maxRadius,
+      minRadius,
+      rootDistance,
+      leafAngles,
+      nodes,
+      links,
+      0
+    );
 
     return {
       id: generateId(),
@@ -130,63 +138,65 @@ class CircularLayout implements LayoutAlgorithm {
     }
   }
 
-  private layoutInternalNodes(
+  private maxDistanceToRoot(node: TreeNode, distance = 0): number {
+    const currentDistance = distance + Math.max(0, node.branchLength || 0);
+
+    if (!node.children || node.children.length === 0) {
+      return currentDistance;
+    }
+
+    return node.children.reduce(
+      (max, child) => Math.max(max, this.maxDistanceToRoot(child, currentDistance)),
+      currentDistance
+    );
+  }
+
+  private layoutByPolar(
     node: TreeNode,
-    nodes: Record<string, { x: number; y: number }>,
-    links: Array<{ source: string; target: string }>,
     centerX: number,
     centerY: number,
-    maxRadius: number
-  ): void {
-    if (!node.children || node.children.length === 0) return;
+    maxRadius: number,
+    minRadius: number,
+    maxDistance: number,
+    leafAngles: Map<string, number>,
+    nodes: Record<string, { x: number; y: number }>,
+    links: Array<{ source: string; target: string }>,
+    accumulatedDistance: number
+  ): number {
+    const selfDistance = accumulatedDistance + Math.max(0, node.branchLength || 0);
 
-    // 计算子节点的边界角度
-    let minAngle = Infinity;
-    let maxAngle = -Infinity;
-    let validChildren = 0;
+    const angle = (!node.children || node.children.length === 0)
+      ? (leafAngles.get(node.id) || -Math.PI / 2)
+      : node.children
+          .map(child => this.layoutByPolar(
+            child,
+            centerX,
+            centerY,
+            maxRadius,
+            minRadius,
+            maxDistance,
+            leafAngles,
+            nodes,
+            links,
+            selfDistance
+          ))
+          .reduce((sum, childAngle) => sum + childAngle, 0) / node.children.length;
 
-    for (const child of node.children) {
-      links.push({ source: node.id, target: child.id });
-      this.layoutInternalNodes(child, nodes, links, centerX, centerY, maxRadius);
-      
-      // 确保子节点已经在nodes对象中
-      if (nodes[child.id]) {
-        const childX = nodes[child.id].x - centerX;
-        const childY = nodes[child.id].y - centerY;
-        const angle = Math.atan2(childY, childX);
-        
-        minAngle = Math.min(minAngle, angle);
-        maxAngle = Math.max(maxAngle, angle);
-        validChildren++;
-      }
-    }
-
-    // 只有当有有效子节点时才计算位置
-    if (validChildren > 0) {
-      // 计算内部节点的角度（子节点角度范围的中间值）
-      const nodeAngle = (minAngle + maxAngle) / 2;
-      
-      // 计算子节点到中心的平均距离
-      let sumRadius = 0;
+    if (node.children) {
       for (const child of node.children) {
-        if (nodes[child.id]) {
-          const childX = nodes[child.id].x - centerX;
-          const childY = nodes[child.id].y - centerY;
-          sumRadius += Math.sqrt(childX * childX + childY * childY);
-        }
+        links.push({ source: node.id, target: child.id });
       }
-      const avgChildRadius = sumRadius / validChildren;
-      
-      // 计算内部节点的半径，确保只有最外层树枝触达圆环
-      // 内部节点的半径应该比子节点小，形成层次感
-      const nodeRadius = Math.max(60, avgChildRadius * 0.3);
-      
-      // 计算内部节点的坐标
-      const x = centerX + nodeRadius * Math.cos(nodeAngle);
-      const y = centerY + nodeRadius * Math.sin(nodeAngle);
-      
-      nodes[node.id] = { x, y };
     }
+
+    const distanceFactor = maxDistance > 0 ? selfDistance / maxDistance : 0;
+    const radius = minRadius + (maxRadius - minRadius) * Math.min(1, Math.max(0, distanceFactor));
+
+    nodes[node.id] = {
+      x: centerX + radius * Math.cos(angle),
+      y: centerY + radius * Math.sin(angle)
+    };
+
+    return angle;
   }
 }
 

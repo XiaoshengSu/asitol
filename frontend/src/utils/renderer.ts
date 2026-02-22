@@ -68,23 +68,17 @@ class SVGRenderer {
           // 先水平移动到目标节点的x坐标，再垂直移动到目标节点的y坐标
           return `M ${source.x} ${source.y} L ${target.x} ${source.y} L ${target.x} ${target.y}`;
         } else if (layoutResult.type === 'circular') {
-          // 对于圆形布局，使用矩形分叉避免交叉
-          // 计算到中心的距离
-          const sourceDistance = Math.sqrt((source.x - centerX) ** 2 + (source.y - centerY) ** 2);
-          const targetDistance = Math.sqrt((target.x - centerX) ** 2 + (target.y - centerY) ** 2);
-          
-          // 内部节点连接使用矩形分叉，增强矩阵扩散效果
-          if (sourceDistance < config.width / 3 || targetDistance < config.width / 3) {
-            // 计算中间点，确保矩形分叉
-            const midX = (source.x + target.x) / 2;
-            const midY = (source.y + target.y) / 2;
-            
-            // 先水平移动到中间点，再垂直移动到目标节点，形成矩阵分叉效果
-            return `M ${source.x} ${source.y} L ${midX} ${source.y} L ${midX} ${target.y} L ${target.x} ${target.y}`;
-          } else {
-            // 对于外层节点，使用直线连接
-            return `M ${source.x} ${source.y} L ${target.x} ${target.y}`;
-          }
+          const targetRadius = Math.hypot(target.x - centerX, target.y - centerY);
+          const sourceAngle = Math.atan2(source.y - centerY, source.x - centerX);
+          const targetAngle = Math.atan2(target.y - centerY, target.x - centerX);
+
+          // 仿 iTOL：先沿半径方向，再走同心圆弧到子节点角度
+          const sweep = this.shortestArcSweep(sourceAngle, targetAngle);
+          return [
+            `M ${source.x} ${source.y}`,
+            `L ${centerX + targetRadius * Math.cos(sourceAngle)} ${centerY + targetRadius * Math.sin(sourceAngle)}`,
+            `A ${targetRadius} ${targetRadius} 0 0 ${sweep > 0 ? 1 : 0} ${target.x} ${target.y}`
+          ].join(' ');
         } else {
           // 对于其他布局，使用直线连接
           return `M ${source.x} ${source.y} L ${target.x} ${target.y}`;
@@ -300,6 +294,14 @@ class SVGRenderer {
       }
     }
     return null;
+  }
+
+
+  private shortestArcSweep(sourceAngle: number, targetAngle: number): number {
+    let delta = targetAngle - sourceAngle;
+    while (delta > Math.PI) delta -= 2 * Math.PI;
+    while (delta < -Math.PI) delta += 2 * Math.PI;
+    return delta;
   }
 
   updateTransform(transform: string): void {
