@@ -145,7 +145,7 @@ class SVGRenderer {
             const x = d[1].x;
             const y = d[1].y;
             const angle = Math.atan2(y - centerY, x - centerX);
-            const isLeft = Math.cos(angle) < 0;
+            const isLeft = angle > Math.PI / 2 || angle < -Math.PI / 2;
             return isLeft ? 'end' : 'start';
           }
           return 'start';
@@ -178,7 +178,7 @@ class SVGRenderer {
             const offset = this.getCircularLabelOffset(isLargeTree);
             const labelX = x + offset * Math.cos(angle);
             const labelY = y + offset * Math.sin(angle);
-            const isLeft = Math.cos(angle) < 0;
+            const isLeft = angle > Math.PI / 2 || angle < -Math.PI / 2;
             const rotation = (angle + (isLeft ? Math.PI : 0)) * (180 / Math.PI);
             return `rotate(${rotation}, ${labelX}, ${labelY})`;
           }
@@ -250,7 +250,7 @@ class SVGRenderer {
           const x = d[1].x;
           const y = d[1].y;
           const angle = Math.atan2(y - centerY, x - centerX);
-          const isLeft = Math.cos(angle) < 0;
+          const isLeft = angle > Math.PI / 2 || angle < -Math.PI / 2;
           return isLeft ? 'end' : 'start';
         })
         .attr('x', d => {
@@ -274,7 +274,7 @@ class SVGRenderer {
           const offset = this.getCircularLabelOffset(true);
           const labelX = x + offset * Math.cos(angle);
           const labelY = y + offset * Math.sin(angle);
-          const isLeft = Math.cos(angle) < 0;
+          const isLeft = angle > Math.PI / 2 || angle < -Math.PI / 2;
           const rotation = (angle + (isLeft ? Math.PI : 0)) * (180 / Math.PI);
           return `rotate(${rotation}, ${labelX}, ${labelY})`;
         })
@@ -493,7 +493,7 @@ class CanvasRenderer {
     const labelOffset = 15; // 标签偏移距离
     const labelX = pos.x + labelOffset * Math.cos(angle);
     const labelY = pos.y + labelOffset * Math.sin(angle);
-    const isLeft = Math.cos(angle) < 0;
+    const isLeft = angle > Math.PI / 2 || angle < -Math.PI / 2;
     const rotation = angle + (isLeft ? Math.PI : 0);
     
     // 保存当前状态
