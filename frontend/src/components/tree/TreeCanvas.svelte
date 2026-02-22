@@ -17,6 +17,7 @@
   let renderMode: 'svg' | 'canvas' = 'canvas';
   let zoom: number = 1;
   let pan: { x: number; y: number } = { x: 0, y: 0 };
+  let branchColor = '#8f96a3';
   let isDragging: boolean = false;
   let lastMouseX: number = 0;
   let lastMouseY: number = 0;
@@ -35,7 +36,8 @@
     renderMode = $uiStore.renderMode;
     zoom = $uiStore.zoom;
     pan = $uiStore.pan;
-    // 当showLabels变化时重新渲染树
+    branchColor = $uiStore.branchColor;
+    // 当showLabels或branchColor变化时重新渲染树
     if (renderer && tree && layoutResult) {
       render();
     }
@@ -49,7 +51,7 @@
       height: container.clientHeight,
       backgroundColor: '#242424',
       nodeColor: '#fff',
-      branchColor: '#888',
+      branchColor,
       nodeSize: 4,
       branchWidth: 1
     };
@@ -71,7 +73,7 @@
       height: container.clientHeight,
       backgroundColor: '#242424',
       nodeColor: '#fff',
-      branchColor: '#888',
+      branchColor,
       nodeSize: 4,
       branchWidth: 1
     };

@@ -12,11 +12,22 @@
   // 反应式变量来跟踪UI状态
   let renderMode = 'svg';
   let showLabels = true;
+  let branchColor = '#8f96a3';
+
+  const scientificPalettes = [
+    { name: 'Slate', color: '#8f96a3' },
+    { name: 'Teal', color: '#4E8B8B' },
+    { name: 'Indigo', color: '#6574B8' },
+    { name: 'Olive', color: '#7E8B5B' },
+    { name: 'Rose', color: '#A46D7C' },
+    { name: 'Amber', color: '#B38A4C' }
+  ];
 
   // 订阅UI状态变化
   uiStore.subscribe($uiStore => {
     renderMode = $uiStore.renderMode;
     showLabels = $uiStore.showLabels;
+    branchColor = $uiStore.branchColor;
   });
 
   // 放大
@@ -49,6 +60,11 @@
   // 切换标签显示
   const toggleLabels = () => {
     uiStore.toggleLabels();
+  };
+
+  // 设置树枝颜色
+  const setBranchColor = (color: string) => {
+    uiStore.setBranchColor(color);
   };
 
   // 更改布局类型
@@ -114,6 +130,34 @@
       >
         重置
       </button>
+    </div>
+  </div>
+
+
+
+  <!-- 树枝配色 -->
+  <div class="mb-4">
+    <label class="block text-xs text-gray-400 mb-1">树枝配色（科研色系）</label>
+    <div class="grid grid-cols-3 gap-2 mb-2">
+      {#each scientificPalettes as palette}
+        <button
+          class="text-[10px] text-white py-1 px-2 rounded border border-gray-600 hover:border-gray-400"
+          style="background-color: {palette.color}; opacity: {branchColor === palette.color ? 1 : 0.75}"
+          on:click={() => setBranchColor(palette.color)}
+          title={palette.name}
+        >
+          {palette.name}
+        </button>
+      {/each}
+    </div>
+    <div class="flex items-center gap-2">
+      <input
+        type="color"
+        class="w-10 h-7 rounded bg-gray-700 border border-gray-600"
+        bind:value={branchColor}
+        on:change={(e) => setBranchColor((e.currentTarget as HTMLInputElement).value)}
+      />
+      <span class="text-[10px] text-gray-400">{branchColor}</span>
     </div>
   </div>
 
