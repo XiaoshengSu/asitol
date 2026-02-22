@@ -164,8 +164,9 @@ class CircularLayout implements LayoutAlgorithm {
     accumulatedDistance: number
   ): number {
     const selfDistance = accumulatedDistance + Math.max(0, node.branchLength || 0);
+    const isLeaf = !node.children || node.children.length === 0;
 
-    const angle = (!node.children || node.children.length === 0)
+    const angle = isLeaf
       ? (leafAngles.get(node.id) || -Math.PI / 2)
       : node.children
           .map(child => this.layoutByPolar(
@@ -189,7 +190,10 @@ class CircularLayout implements LayoutAlgorithm {
     }
 
     const distanceFactor = maxDistance > 0 ? selfDistance / maxDistance : 0;
-    const radius = minRadius + (maxRadius - minRadius) * Math.min(1, Math.max(0, distanceFactor));
+    // 叶节点固定在最外层圆环上，内部节点保留深度分层，避免叶端参差导致外环不完整
+    const radius = isLeaf
+      ? maxRadius
+      : minRadius + (maxRadius - minRadius) * Math.min(0.92, Math.max(0, distanceFactor));
 
     nodes[node.id] = {
       x: centerX + radius * Math.cos(angle),
