@@ -15,20 +15,23 @@
   let branchColor = '#8f96a3';
   let branchColorMode: 'single' | 'clade' = 'clade';
 
-  // 专业生信配色方案
+  // 专业生信配色方案 - 基于科研期刊标准
   const colorSchemes = [
-    // 主调色板色系
-    { name: 'Primary', base: '#3182BD', gradient: 'linear-gradient(90deg, #08306B 0%, #2171B5 25%, #3182BD 50%, #6BAED6 75%, #EFF3FF 100%)' },
-    { name: 'Colorblind', base: '#0072B2', gradient: 'linear-gradient(90deg, #0072B2 0%, #009E73 25%, #D55E00 50%, #CC79A7 75%, #F0E442 100%)' },
-    { name: 'Sequential', base: '#3182BD', gradient: 'linear-gradient(90deg, #08306B 0%, #2171B5 25%, #3182BD 50%, #6BAED6 75%, #EFF3FF 100%)' },
-    { name: 'Diverging', base: '#B2182B', gradient: 'linear-gradient(90deg, #B2182B 0%, #F4A582 25%, #F7F7F7 50%, #92C5DE 75%, #2166AC 100%)' },
-    // 经典色系
-    { name: 'Slate', base: '#8f96a3', gradient: 'linear-gradient(90deg, #2f3640 0%, #596275 35%, #8f96a3 60%, #c4cad4 80%, #e6eaef 100%)' },
-    { name: 'Teal', base: '#4E8B8B', gradient: 'linear-gradient(90deg, #1e3d3d 0%, #376b6b 35%, #4E8B8B 60%, #8fc1c1 80%, #d4eeee 100%)' },
-    { name: 'Indigo', base: '#6574B8', gradient: 'linear-gradient(90deg, #2c335e 0%, #4b5690 35%, #6574B8 60%, #a8b1df 80%, #e2e6f7 100%)' },
-    { name: 'Olive', base: '#7E8B5B', gradient: 'linear-gradient(90deg, #354029 0%, #5a6643 35%, #7E8B5B 60%, #b2bd93 80%, #e2e7d2 100%)' },
-    { name: 'Rose', base: '#A46D7C', gradient: 'linear-gradient(90deg, #4a333c 0%, #7b4e5b 35%, #A46D7C 60%, #d0a6b1 80%, #f0dee3 100%)' },
-    { name: 'Amber', base: '#B38A4C', gradient: 'linear-gradient(90deg, #4a3720 0%, #7c5c2f 35%, #B38A4C 60%, #d7bf8a 80%, #f1e4c7 100%)' }
+    // 科研期刊和软件标准调色板
+    { name: 'Prism', base: '#1F77B4', colors: ['#1F77B4', '#FF7F0E', '#2CA02C', '#D62728', '#9467BD', '#8C564B', '#E377C2', '#7F7F7F'] },
+    { name: 'Academy', base: '#8C564B', colors: ['#8C564B', '#E377C2', '#2CA02C', '#FF7F0E', '#1F77B4', '#9467BD', '#D62728', '#7F7F7F'] },
+    { name: 'Light', base: '#17BECF', colors: ['#17BECF', '#BCBD22', '#7F7F7F', '#E377C2', '#2CA02C', '#FF7F0E', '#1F77B4', '#D62728'] },
+    { name: 'GGPlot', base: '#F8766D', colors: ['#F8766D', '#C49A00', '#53B400', '#00C094', '#00B6EB', '#A58AFF', '#FB61D7', '#7CAE00'] },
+    { name: 'NPG', base: '#E64B35B2', colors: ['#E64B35B2', '#4DBBD5B2', '#00A087B2', '#3C5488B2', '#F39B7F80', '#8491B480', '#91D1C280', '#DC0000B2'] },
+    { name: 'AAAS', base: '#3B4992', colors: ['#3B4992', '#EE0000', '#008B45', '#631879', '#008280', '#BB0021', '#5F559B', '#A20056'] },
+    { name: 'NEJM', base: '#BC3C29', colors: ['#BC3C29', '#0072B5', '#E18727', '#20854E', '#7876B1', '#6F9ED4', '#FFDC91', '#EE4C97'] },
+    { name: 'Lancet', base: '#00468B', colors: ['#00468B', '#ED0000', '#42B540', '#0099B4', '#925E9F', '#FDAF91', '#AD002A', '#ADB6B6'] },
+    { name: 'JAMA', base: '#374E55', colors: ['#374E55', '#DF8F44', '#00A1D5', '#B24745', '#79AF97', '#6A6599', '#80796B', '#E0A7C8'] },
+    { name: 'JCO', base: '#006393', colors: ['#006393', '#70A6FF', '#D62828', '#00BB2D', '#FFBB00', '#9E0059', '#00B9E3', '#FF6B35'] },
+    { name: 'GSEA', base: '#666666', colors: ['#666666', '#666666', '#666666', '#666666', '#666666', '#FF0000', '#FF0000', '#FF0000'] },
+    // 基础调色板
+    { name: 'Primary', base: '#3182BD', colors: ['#3182BD', '#E6550D', '#31A354', '#756BB1', '#636363', '#DD8452', '#80B1D3', '#FC8D62'] },
+    { name: 'Colorblind', base: '#0072B2', colors: ['#0072B2', '#009E73', '#D55E00', '#CC79A7', '#F0E442', '#56B4E9', '#E69F00', '#999999'] }
   ];
 
   // 订阅UI状态变化
@@ -168,15 +171,61 @@
       </button>
     </div>
     <div class="mb-2">
-      <select
-        class="w-full text-xs bg-gray-700 text-gray-300 rounded p-1 border border-gray-600 text-left"
-        on:change={(e) => setBranchColor((e.currentTarget as HTMLSelectElement).value)}
-        value={branchColor}
-      >
-        {#each colorSchemes as scheme}
-          <option value={scheme.base}>{scheme.name}</option>
-        {/each}
-      </select>
+      <!-- 自定义下拉组件，支持颜色预览 -->
+      <div class="relative">
+        <button
+          class="w-full text-xs bg-gray-700 text-gray-300 rounded p-1 border border-gray-600 text-left flex justify-between items-center"
+          on:click={() => {
+            const dropdown = document.getElementById('colorSchemeDropdown');
+            if (dropdown) {
+              dropdown.classList.toggle('hidden');
+            }
+          }}
+        >
+          <div class="flex items-center gap-2">
+            <div class="w-16 h-4 rounded overflow-hidden">
+              {#each colorSchemes.find(s => s.base === branchColor)?.colors.slice(0, 8) || [] as color}
+                <div 
+                  class="inline-block w-2 h-4" 
+                  style="background-color: {color}"
+                />
+              {/each}
+            </div>
+            <span>{colorSchemes.find(s => s.base === branchColor)?.name || '选择色系'}</span>
+          </div>
+          <svg width="10" height="6" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M1 1L5 5L9 1" stroke="#9CA3AF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <!-- 下拉菜单 -->
+        <div 
+          id="colorSchemeDropdown"
+          class="hidden absolute top-full left-0 right-0 mt-1 bg-gray-800 rounded border border-gray-600 shadow-lg z-10 max-h-60 overflow-y-auto"
+        >
+          {#each colorSchemes as scheme}
+            <button
+              class="w-full text-xs text-left p-2 hover:bg-gray-700 flex items-center gap-2"
+              on:click={() => {
+                setBranchColor(scheme.base);
+                const dropdown = document.getElementById('colorSchemeDropdown');
+                if (dropdown) {
+                  dropdown.classList.add('hidden');
+                }
+              }}
+            >
+              <div class="w-16 h-4 rounded overflow-hidden flex">
+                {#each scheme.colors.slice(0, 8) as color}
+                  <div 
+                    class="flex-1" 
+                    style="background-color: {color}"
+                  />
+                {/each}
+              </div>
+              <span>{scheme.name}</span>
+            </button>
+          {/each}
+        </div>
+      </div>
     </div>
     <div class="flex items-center gap-2">
       <input
