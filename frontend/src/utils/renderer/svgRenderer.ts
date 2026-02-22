@@ -103,7 +103,21 @@ export class SVGRenderer {
         const target = layoutResult.nodes[d.target];
 
         if (layoutResult.type === 'rectangular') {
-          return `M ${source.x} ${source.y} L ${target.x} ${source.y} L ${target.x} ${target.y}`;
+          // 按照参考效果图的方式绘制矩形树树枝
+          // 所有树枝都是直角分叉，水平线段朝右
+          
+          // 检查目标节点是否为叶节点
+          const isTargetLeaf = !findNodeById(tree.root, d.target)?.children || findNodeById(tree.root, d.target)?.children.length === 0;
+          
+          if (isTargetLeaf) {
+            // 对于叶节点，确保有一个水平向右的线段
+            // 计算水平线段的终点x坐标，确保朝右
+            const horizontalEndX = Math.max(source.x, target.x) + 30; // 额外增加30px，确保有足够空间显示标签
+            return `M ${source.x} ${source.y} L ${target.x} ${source.y} L ${target.x} ${target.y} L ${horizontalEndX} ${target.y}`;
+          } else {
+            // 对于非叶节点，使用正常的直角分叉
+            return `M ${source.x} ${source.y} L ${target.x} ${source.y} L ${target.x} ${target.y}`;
+          }
         }
 
         if (layoutResult.type === 'circular') {
@@ -296,6 +310,9 @@ export class SVGRenderer {
             const dir = labelDirection.get(d[0]);
             const ux = dir ? dir.ux : Math.cos(Math.atan2(y - centerY, x - centerX));
             return x + offset * ux;
+          } else if (layoutResult.type === 'rectangular') {
+            // 对于矩形树，将标签放在分支末端右侧
+            return d[1].x + 35; // 额外增加35px，确保标签在分支末端右侧
           }
           return d[1].x + 8;
         })
@@ -307,6 +324,9 @@ export class SVGRenderer {
             const dir = labelDirection.get(d[0]);
             const uy = dir ? dir.uy : Math.sin(Math.atan2(y - centerY, x - centerX));
             return y + offset * uy;
+          } else if (layoutResult.type === 'rectangular') {
+            // 对于矩形树，将标签垂直居中于分支
+            return d[1].y;
           }
           return d[1].y + 3;
         })
@@ -379,7 +399,21 @@ export class SVGRenderer {
         }
 
         if (layoutResult.type === 'rectangular') {
-          return `M ${source.x} ${source.y} L ${target.x} ${source.y} L ${target.x} ${target.y}`;
+          // 按照参考效果图的方式绘制矩形树树枝
+          // 所有树枝都是直角分叉，水平线段朝右
+          
+          // 检查目标节点是否为叶节点
+          const isTargetLeaf = !findNodeById(tree.root, d.target)?.children || findNodeById(tree.root, d.target)?.children.length === 0;
+          
+          if (isTargetLeaf) {
+            // 对于叶节点，确保有一个水平向右的线段
+            // 计算水平线段的终点x坐标，确保朝右
+            const horizontalEndX = Math.max(source.x, target.x) + 30; // 额外增加30px，确保有足够空间显示标签
+            return `M ${source.x} ${source.y} L ${target.x} ${source.y} L ${target.x} ${target.y} L ${horizontalEndX} ${target.y}`;
+          } else {
+            // 对于非叶节点，使用正常的直角分叉
+            return `M ${source.x} ${source.y} L ${target.x} ${source.y} L ${target.x} ${target.y}`;
+          }
         }
 
         if (layoutResult.type === 'radial') {

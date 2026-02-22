@@ -17,8 +17,13 @@ class RectangularLayout implements LayoutAlgorithm {
     const treeHeight = this.calculateTreeHeight(tree.root);
     const treeWidth = this.calculateTreeWidth(tree.root);
 
-    // 计算节点间距，增加Y轴间距以避免标签重叠
-    const yStep = (height - 2 * padding) / Math.max(1, treeHeight) * 1.2; // 增加20%的Y轴间距
+    // 计算节点间距，根据容器大小自适应调整
+    // 确保树的高度不会超出容器，同时为标签预留足够空间
+    const maxPossibleYStep = (height - 2 * padding) / Math.max(1, treeHeight);
+    // 根据容器高度和树的高度自适应调整Y轴间距
+    // 确保最小间距为15px，最大间距不超过50px
+    const yStep = Math.max(15, Math.min(maxPossibleYStep, 50));
+    // X轴间距根据容器宽度和树的宽度自适应调整
     const xStep = (width - 2 * padding) / Math.max(1, treeWidth);
 
     // 计算根节点的居中位置
