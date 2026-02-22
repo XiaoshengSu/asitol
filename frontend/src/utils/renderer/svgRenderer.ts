@@ -44,16 +44,30 @@ export class SVGRenderer {
     const cladeColorMap = useCladeColors ? buildCladeColorMap(tree, config.branchColor || '#8f96a3') : null;
 
     const nodeSize = isLargeTree ? Math.max(1, (config.nodeSize || 4) * 0.6) : (config.nodeSize || 4);
-    const branchWidth = isLargeTree ? Math.max(0.5, (config.branchWidth || 1) * 0.8) : (config.branchWidth || 1);
+    const baseBranchWidth = isLargeTree ? Math.max(0.5, (config.branchWidth || 1) * 0.8) : (config.branchWidth || 1);
+    
+    // 计算每个节点的深度层级
+    const nodeDepth = new Map<string, number>();
+    const maxDepth = this.calculateNodeDepths(tree.root, 0, nodeDepth);
+    const depthRange = Math.max(1, maxDepth);
+    
+    // 调试：检查 nodeDepth 映射是否正确填充
+    console.log('Node depths:', Array.from(nodeDepth.entries()).slice(0, 10));
+    console.log('Max depth:', maxDepth);
+    console.log('Tree root:', tree.root);
+    console.log('First 5 links:', layoutResult.links.slice(0, 5));
 
     if (nodeCount > 1000) {
-      this.renderLargeTree(tree, layoutResult, config, centerX, centerY, nodeSize, branchWidth, cladeColorMap);
+      this.renderLargeTree(tree, layoutResult, config, centerX, centerY, nodeSize, baseBranchWidth, cladeColorMap, nodeDepth, maxDepth);
       return;
     }
 
+    // 计算所有布局的叶节点
+    const leafNodeIds = new Set(Object.keys(layoutResult.nodes).filter(id => isLeafNode(tree.root, id)));
+    
     // 为圆形和径向布局计算叶节点
     const circularLeafIds = (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted')
-      ? new Set(Object.keys(layoutResult.nodes).filter(id => isLeafNode(tree.root, id)))
+      ? leafNodeIds
       : new Set<string>();
 
     const labelDirection = new Map<string, { angle: number; ux: number; uy: number }>();
@@ -113,14 +127,20 @@ export class SVGRenderer {
         }
         return ensureContrast(config.branchColor || '#888');
       })
-      .attr('stroke-width', branchWidth)
+      .attr('stroke-width', d => {
+        // 基于目标节点深度计算树枝宽度，根节点最粗，叶节点最细
+        const targetDepth = nodeDepth.get(d.target) || 0;
+        const widthRatio = 1 - (targetDepth / depthRange);
+        // 使用更明显的宽度变化范围
+        const minWidth = baseBranchWidth * 0.5;
+        const maxWidth = baseBranchWidth * 2;
+        return Math.max(minWidth, minWidth + (maxWidth - minWidth) * widthRatio);
+      })
       .attr('stroke-opacity', (layoutResult.type === 'circular' || layoutResult.type === 'radial') ? 0.75 : 1)
       .attr('fill', 'none');
 
     const allNodes = Object.entries(layoutResult.nodes);
-    const circularLeafNodes = (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted')
-      ? allNodes.filter(([id]) => isLeafNode(tree.root, id))
-      : [];
+    const circularLeafNodes = allNodes.filter(([id]) => leafNodeIds.has(id));
 
     const nodeData = (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted') && circularLeafNodes.length > 300
       ? allNodes.filter(([id]) => !isLeafNode(tree.root, id))
@@ -140,9 +160,10 @@ export class SVGRenderer {
     uiStore.subscribe(state => showLabels = state.showLabels)();
 
     if (showLabels) {
+      // 为所有布局只显示叶节点标签，避免重叠
       const labelData = (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted')
         ? this.selectCircularLabels(circularLeafNodes, centerX, centerY, isLargeTree)
-        : allNodes;
+        : circularLeafNodes; // 矩形布局只显示叶节点
 
       this.g.selectAll('.label')
         .data(labelData)
@@ -151,9 +172,18 @@ export class SVGRenderer {
         .attr('class', 'label')
         .attr('fill', '#fff')
         .attr('dominant-baseline', 'middle')
-        .attr('font-size', (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted')
-          ? this.getCircularLabelFontSize(labelData.length, isLargeTree)
-          : (isLargeTree ? '10px' : '12px'))
+        .attr('font-size', () => {
+          if (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted') {
+            return this.getCircularLabelFontSize(labelData.length, isLargeTree);
+          } else {
+            // 矩形布局根据叶节点数量调整字体大小
+            if (labelData.length > 500) return '6px';
+            if (labelData.length > 200) return '7px';
+            if (labelData.length > 100) return '8px';
+            if (labelData.length > 50) return '9px';
+            return isLargeTree ? '10px' : '12px';
+          }
+        })
         .attr('text-anchor', () => 'start')
         .attr('x', d => {
           if (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted') {
@@ -208,7 +238,9 @@ export class SVGRenderer {
     centerY: number,
     nodeSize: number,
     branchWidth: number,
-    cladeColorMap: Map<string, string> | null
+    cladeColorMap: Map<string, string> | null,
+    nodeDepth: Map<string, number>,
+    maxDepth: number
   ): void {
     this.g.selectAll('.link')
       .data(layoutResult.links)
@@ -244,7 +276,15 @@ export class SVGRenderer {
         }
         return ensureContrast(config.branchColor || '#888');
       })
-      .attr('stroke-width', branchWidth * 0.8)
+      .attr('stroke-width', d => {
+        // 基于目标节点深度计算树枝宽度，根节点最粗，叶节点最细
+        const targetDepth = nodeDepth.get(d.target) || 0;
+        const widthRatio = 1 - (targetDepth / Math.max(1, maxDepth));
+        // 使用更明显的宽度变化范围
+        const minWidth = branchWidth * 0.4;
+        const maxWidth = branchWidth * 1.6;
+        return Math.max(minWidth, minWidth + (maxWidth - minWidth) * widthRatio);
+      })
       .attr('fill', 'none');
 
     const leafNodes = Object.entries(layoutResult.nodes).filter(([id]) => isLeafNode(tree.root, id));
@@ -387,5 +427,35 @@ export class SVGRenderer {
 
   resize(width: number, height: number): void {
     this.svg.attr('width', width).attr('height', height);
+  }
+
+  /**
+   * 递归计算每个节点的深度层级
+   * @param node 当前节点
+   * @param depth 当前深度
+   * @param nodeDepth 存储节点深度的映射
+   * @returns 最大深度值
+   */
+  private calculateNodeDepths(
+    node: any,
+    depth: number,
+    nodeDepth: Map<string, number>
+  ): number {
+    // 确保节点有 id 属性
+    if (node.id) {
+      nodeDepth.set(node.id, depth);
+    }
+    
+    if (!node.children || node.children.length === 0) {
+      return depth;
+    }
+    
+    let maxChildDepth = depth;
+    for (const child of node.children) {
+      const childDepth = this.calculateNodeDepths(child, depth + 1, nodeDepth);
+      maxChildDepth = Math.max(maxChildDepth, childDepth);
+    }
+    
+    return maxChildDepth;
   }
 }
