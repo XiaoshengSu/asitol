@@ -189,8 +189,8 @@ class SVGRenderer {
             const y = d[1].y;
             const angle = Math.atan2(y - centerY, x - centerX);
             
-            // 切向排版（angle + 90°），并在左半圈翻转，提升整体可读性
-            let rotation = angle * (180 / Math.PI) + 90;
+            // 径向排版（与圆环半径同向），并在左半圈翻转，保持可读性
+            let rotation = angle * (180 / Math.PI);
             if (Math.abs(angle) > Math.PI / 2) {
               rotation += 180;
             }
@@ -289,7 +289,7 @@ class SVGRenderer {
           const x = d[1].x;
           const y = d[1].y;
           const angle = Math.atan2(y - centerY, x - centerX);
-          let rotation = angle * (180 / Math.PI) + 90;
+          let rotation = angle * (180 / Math.PI);
           if (Math.abs(angle) > Math.PI / 2) {
             rotation += 180;
           }
