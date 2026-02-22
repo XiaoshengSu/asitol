@@ -154,16 +154,60 @@ export class SVGRenderer {
       .attr('cx', d => d[1].x)
       .attr('cy', d => d[1].y)
       .attr('r', nodeSize)
-      .attr('fill', config.nodeColor || '#fff');
+      .attr('fill', config.nodeColor || '#fff')
+      .attr('cursor', 'pointer')
+      .on('mouseover', (event, d) => {
+        // 创建工具提示元素
+        const tooltip = d3.select('body')
+          .append('div')
+          .attr('class', 'tree-tooltip')
+          .style('position', 'absolute')
+          .style('background', 'rgba(0, 0, 0, 0.8)')
+          .style('color', 'white')
+          .style('padding', '8px 12px')
+          .style('border-radius', '4px')
+          .style('font-size', '12px')
+          .style('z-index', '1000')
+          .style('pointer-events', 'none')
+          .style('left', (event.pageX + 10) + 'px')
+          .style('top', (event.pageY + 10) + 'px');
+        
+        // 获取节点信息
+        const node = findNodeById(tree.root, d[0]);
+        if (node) {
+          const tooltipContent = `
+            <div><strong>节点名称:</strong> ${node.name || '未命名'}</div>
+            <div><strong>节点ID:</strong> ${node.id}</div>
+            ${node.children && node.children.length > 0 ? `<div><strong>子节点数:</strong> ${node.children.length}</div>` : ''}
+            ${node.length ? `<div><strong>分支长度:</strong> ${node.length}</div>` : ''}
+          `;
+          tooltip.html(tooltipContent);
+        }
+      })
+      .on('mousemove', (event) => {
+        // 更新工具提示位置
+        d3.select('.tree-tooltip')
+          .style('left', (event.pageX + 10) + 'px')
+          .style('top', (event.pageY + 10) + 'px');
+      })
+      .on('mouseout', () => {
+        // 移除工具提示
+        d3.select('.tree-tooltip').remove();
+      });
 
     let showLabels = true;
     uiStore.subscribe(state => showLabels = state.showLabels)();
 
     if (showLabels) {
-      // 为所有布局只显示叶节点标签，避免重叠
-      const labelData = (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted')
-        ? this.selectCircularLabels(circularLeafNodes, centerX, centerY, isLargeTree)
-        : circularLeafNodes; // 矩形布局只显示叶节点
+      // 默认只显示叶节点标签，避免重叠
+    let labelData = (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted')
+      ? this.selectCircularLabels(circularLeafNodes, centerX, centerY, isLargeTree)
+      : circularLeafNodes; // 矩形布局只显示叶节点
+    
+    // 对于矩形布局，进一步优化标签密度
+    if (layoutResult.type === 'rectangular') {
+      labelData = this.optimizeRectangularLabels(labelData, isLargeTree);
+    }
 
       this.g.selectAll('.label')
         .data(labelData)
@@ -176,12 +220,12 @@ export class SVGRenderer {
           if (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted') {
             return this.getCircularLabelFontSize(labelData.length, isLargeTree);
           } else {
-            // 矩形布局根据叶节点数量调整字体大小
-            if (labelData.length > 500) return '6px';
-            if (labelData.length > 200) return '7px';
-            if (labelData.length > 100) return '8px';
-            if (labelData.length > 50) return '9px';
-            return isLargeTree ? '10px' : '12px';
+            // 矩形布局根据叶节点数量调整字体大小，使用更小的字体以避免重叠
+            if (labelData.length > 300) return '4px';
+            if (labelData.length > 150) return '5px';
+            if (labelData.length > 80) return '6px';
+            if (labelData.length > 40) return '7px';
+            return isLargeTree ? '8px' : '10px';
           }
         })
         .attr('text-anchor', () => 'start')
@@ -298,7 +342,46 @@ export class SVGRenderer {
       .attr('cx', d => d[1].x)
       .attr('cy', d => d[1].y)
       .attr('r', nodeSize * 0.8)
-      .attr('fill', config.nodeColor || '#fff');
+      .attr('fill', config.nodeColor || '#fff')
+      .attr('cursor', 'pointer')
+      .on('mouseover', (event, d) => {
+        // 创建工具提示元素
+        const tooltip = d3.select('body')
+          .append('div')
+          .attr('class', 'tree-tooltip')
+          .style('position', 'absolute')
+          .style('background', 'rgba(0, 0, 0, 0.8)')
+          .style('color', 'white')
+          .style('padding', '8px 12px')
+          .style('border-radius', '4px')
+          .style('font-size', '12px')
+          .style('z-index', '1000')
+          .style('pointer-events', 'none')
+          .style('left', (event.pageX + 10) + 'px')
+          .style('top', (event.pageY + 10) + 'px');
+        
+        // 获取节点信息
+        const node = findNodeById(tree.root, d[0]);
+        if (node) {
+          const tooltipContent = `
+            <div><strong>节点名称:</strong> ${node.name || '未命名'}</div>
+            <div><strong>节点ID:</strong> ${node.id}</div>
+            ${node.children && node.children.length > 0 ? `<div><strong>子节点数:</strong> ${node.children.length}</div>` : ''}
+            ${node.length ? `<div><strong>分支长度:</strong> ${node.length}</div>` : ''}
+          `;
+          tooltip.html(tooltipContent);
+        }
+      })
+      .on('mousemove', (event) => {
+        // 更新工具提示位置
+        d3.select('.tree-tooltip')
+          .style('left', (event.pageX + 10) + 'px')
+          .style('top', (event.pageY + 10) + 'px');
+      })
+      .on('mouseout', () => {
+        // 移除工具提示
+        d3.select('.tree-tooltip').remove();
+      });
 
     let showLabels = true;
     uiStore.subscribe(state => showLabels = state.showLabels)();
@@ -457,5 +540,53 @@ export class SVGRenderer {
     }
     
     return maxChildDepth;
+  }
+
+  /**
+   * 优化矩形树的标签密度，避免标签重叠
+   * @param labels 原始标签数据
+   * @param isLargeTree 是否为大型树
+   * @returns 优化后的标签数据
+   */
+  private optimizeRectangularLabels(
+    labels: Array<[string, { x: number; y: number }]>,
+    isLargeTree: boolean
+  ): Array<[string, { x: number; y: number }]> {
+    // 对于大型树，采用最激进的标签限制策略
+    if (labels.length > 100) {
+      // 只保留约40个标签，确保可读性
+      const maxLabels = 40;
+      const step = Math.ceil(labels.length / maxLabels);
+      return labels.filter((_, index) => index % step === 0);
+    } else if (labels.length > 60) {
+      // 中型树，保留约50个标签
+      const maxLabels = 50;
+      const step = Math.ceil(labels.length / maxLabels);
+      return labels.filter((_, index) => index % step === 0);
+    } else if (labels.length > 30) {
+      // 小型树，保留约60个标签
+      const maxLabels = 60;
+      const step = Math.ceil(labels.length / maxLabels);
+      return labels.filter((_, index) => index % step === 0);
+    }
+    
+    // 按 Y 坐标排序标签
+    const sortedLabels = [...labels].sort((a, b) => a[1].y - b[1].y);
+    
+    // 采样标签，确保垂直方向上有足够间距
+    const optimizedLabels: Array<[string, { x: number; y: number }]> = [];
+    // 大幅增加最小垂直间距，确保标签不重叠
+    const minYSpacing = isLargeTree ? 20 : 25;
+    let lastY = -Infinity;
+    
+    for (const label of sortedLabels) {
+      const y = label[1].y;
+      if (y - lastY >= minYSpacing) {
+        optimizedLabels.push(label);
+        lastY = y;
+      }
+    }
+    
+    return optimizedLabels;
   }
 }
