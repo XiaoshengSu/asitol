@@ -16,18 +16,30 @@ const DEFAULT_CLADE_PALETTE = [
   '#9B7FAE'
 ];
 
+const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
+
 const countLeaves = (node: TreeNode): number => {
   if (!node.children || node.children.length === 0) return 1;
   return node.children.reduce((sum, child) => sum + countLeaves(child), 0);
 };
 
-const getCladePalette = (count: number): string[] => {
-  if (count <= DEFAULT_CLADE_PALETTE.length) {
+const getCladePalette = (count: number, baseColor: string): string[] => {
+  const base = d3.hsl(baseColor);
+  if (Number.isNaN(base.h) || Number.isNaN(base.s) || Number.isNaN(base.l)) {
     return DEFAULT_CLADE_PALETTE.slice(0, count);
+  }
+  const hue = base.h;
+  const saturation = clamp(base.s === 0 ? 0.55 : base.s, 0.35, 0.85);
+  const minLight = 0.32;
+  const maxLight = 0.78;
+  if (count <= 1) {
+    return [d3.hsl(hue, saturation, clamp(base.l, minLight, maxLight)).formatHex()];
   }
   const colors: string[] = [];
   for (let i = 0; i < count; i += 1) {
-    colors.push(d3.interpolateRainbow(i / Math.max(1, count)));
+    const t = i / Math.max(1, count - 1);
+    const lightness = minLight + (maxLight - minLight) * t;
+    colors.push(d3.hsl(hue, saturation, lightness).formatHex());
   }
   return colors;
 };
@@ -39,7 +51,7 @@ const assignCladeColor = (node: TreeNode, color: string, map: Map<string, string
   }
 };
 
-const buildCladeColorMap = (tree: Tree): Map<string, string> => {
+const buildCladeColorMap = (tree: Tree, baseColor: string): Map<string, string> => {
   const map = new Map<string, string>();
   const children = tree.root.children || [];
   if (children.length === 0) return map;
@@ -47,7 +59,7 @@ const buildCladeColorMap = (tree: Tree): Map<string, string> => {
   const ordered = children
     .slice()
     .sort((a, b) => countLeaves(b) - countLeaves(a));
-  const palette = getCladePalette(ordered.length);
+  const palette = getCladePalette(ordered.length, baseColor);
 
   ordered.forEach((child, index) => {
     assignCladeColor(child, palette[index], map);
@@ -96,7 +108,7 @@ class SVGRenderer {
     const nodeCount = Object.keys(layoutResult.nodes).length;
     const isLargeTree = nodeCount > 500;
     const useCladeColors = config.branchColorMode !== 'single' && (tree.root.children?.length || 0) > 1;
-    const cladeColorMap = useCladeColors ? buildCladeColorMap(tree) : null;
+    const cladeColorMap = useCladeColors ? buildCladeColorMap(tree, config.branchColor || '#8f96a3') : null;
     
     // 根据树的大小调整节点大小和线宽
     const nodeSize = isLargeTree ? Math.max(1, (config.nodeSize || 4) * 0.6) : (config.nodeSize || 4);
@@ -111,6 +123,20 @@ class SVGRenderer {
     const circularLeafIds = layoutResult.type === 'circular'
       ? new Set(Object.keys(layoutResult.nodes).filter(id => this.isLeafNode(tree.root, id)))
       : new Set<string>();
+
+    const labelDirection = new Map<string, { angle: number; ux: number; uy: number }>();
+    if (layoutResult.type === 'circular') {
+      const parentById = new Map<string, string>();
+      layoutResult.links.forEach(link => parentById.set(link.target, link.source));
+      Object.entries(layoutResult.nodes).forEach(([id, pos]) => {
+        const parentId = parentById.get(id);
+        const parentPos = parentId ? layoutResult.nodes[parentId] : null;
+        const dx = parentPos ? pos.x - parentPos.x : pos.x - centerX;
+        const dy = parentPos ? pos.y - parentPos.y : pos.y - centerY;
+        const len = Math.hypot(dx, dy) || 1;
+        labelDirection.set(id, { angle: Math.atan2(dy, dx), ux: dx / len, uy: dy / len });
+      });
+    }
 
     // 绘制连接线
     this.g.selectAll('.link')
@@ -164,21 +190,6 @@ class SVGRenderer {
       ? allNodes.filter(([id]) => this.isLeafNode(tree.root, id))
       : [];
 
-    const labelDirection = new Map<string, { angle: number; ux: number; uy: number }>();
-    if (layoutResult.type === 'circular') {
-      const parentById = new Map<string, string>();
-      layoutResult.links.forEach(link => parentById.set(link.target, link.source));
-      allNodes.forEach(([id, pos]) => {
-        const parentId = parentById.get(id);
-        const parentPos = parentId ? layoutResult.nodes[parentId] : null;
-        const dx = parentPos ? pos.x - parentPos.x : pos.x - centerX;
-        const dy = parentPos ? pos.y - parentPos.y : pos.y - centerY;
-        const len = Math.hypot(dx, dy) || 1;
-        const angle = Math.atan2(dy, dx);
-        labelDirection.set(id, { angle, ux: dx / len, uy: dy / len });
-      });
-    }
-
     const nodeData = layoutResult.type === 'circular' && circularLeafNodes.length > 300
       ? allNodes.filter(([id]) => !this.isLeafNode(tree.root, id))
       : allNodes;
@@ -215,17 +226,7 @@ class SVGRenderer {
         .attr('font-size', layoutResult.type === 'circular'
           ? this.getCircularLabelFontSize(labelData.length, isLargeTree)
           : (isLargeTree ? '10px' : '12px'))
-        .attr('text-anchor', d => {
-          if (layoutResult.type === 'circular') {
-            const x = d[1].x;
-            const y = d[1].y;
-            const dir = labelDirection.get(d[0]);
-            const angle = dir ? dir.angle : Math.atan2(y - centerY, x - centerX);
-            const isLeft = angle > Math.PI / 2 || angle < -Math.PI / 2;
-            return isLeft ? 'end' : 'start';
-          }
-          return 'start';
-        })
+        .attr('text-anchor', () => 'start')
         .attr('x', d => {
           if (layoutResult.type === 'circular') {
             const x = d[1].x;
@@ -259,8 +260,7 @@ class SVGRenderer {
             const uy = dir ? dir.uy : Math.sin(angle);
             const labelX = x + offset * ux;
             const labelY = y + offset * uy;
-            const isLeft = angle > Math.PI / 2 || angle < -Math.PI / 2;
-            const rotation = (angle + (isLeft ? Math.PI : 0)) * (180 / Math.PI);
+            const rotation = angle * (180 / Math.PI);
             return `rotate(${rotation}, ${labelX}, ${labelY})`;
           }
           return '';
@@ -339,8 +339,7 @@ class SVGRenderer {
         const dx = parentPos ? pos.x - parentPos.x : pos.x - centerX;
         const dy = parentPos ? pos.y - parentPos.y : pos.y - centerY;
         const len = Math.hypot(dx, dy) || 1;
-        const angle = Math.atan2(dy, dx);
-        labelDirection.set(id, { angle, ux: dx / len, uy: dy / len });
+        labelDirection.set(id, { angle: Math.atan2(dy, dx), ux: dx / len, uy: dy / len });
       });
     }
 
@@ -356,14 +355,7 @@ class SVGRenderer {
         .attr('fill', '#fff')
         .attr('dominant-baseline', 'middle')
         .attr('font-size', this.getCircularLabelFontSize(leafNodes.length, true))
-        .attr('text-anchor', d => {
-          const x = d[1].x;
-          const y = d[1].y;
-          const dir = labelDirection.get(d[0]);
-          const angle = dir ? dir.angle : Math.atan2(y - centerY, x - centerX);
-          const isLeft = angle > Math.PI / 2 || angle < -Math.PI / 2;
-          return isLeft ? 'end' : 'start';
-        })
+        .attr('text-anchor', () => 'start')
         .attr('x', d => {
           const x = d[1].x;
           const y = d[1].y;
@@ -390,8 +382,7 @@ class SVGRenderer {
           const uy = dir ? dir.uy : Math.sin(angle);
           const labelX = x + offset * ux;
           const labelY = y + offset * uy;
-          const isLeft = angle > Math.PI / 2 || angle < -Math.PI / 2;
-          const rotation = (angle + (isLeft ? Math.PI : 0)) * (180 / Math.PI);
+          const rotation = angle * (180 / Math.PI);
           return `rotate(${rotation}, ${labelX}, ${labelY})`;
         })
         .text(d => {
@@ -411,14 +402,25 @@ class SVGRenderer {
     if (nodes.length <= 240) return nodes;
 
     const radius = nodes.reduce((sum, [, pos]) => sum + Math.hypot(pos.x - centerX, pos.y - centerY), 0) / nodes.length;
-    const minLabelArc = isLargeTree ? 14 : 20;
-    const targetCount = Math.max(120, Math.floor((2 * Math.PI * Math.max(1, radius)) / minLabelArc));
-    const step = Math.max(1, Math.ceil(nodes.length / targetCount));
+    const minLabelArc = isLargeTree ? 5 : 8; // 更高密度
+    const minAngleGap = minLabelArc / Math.max(1, radius);
 
-    return nodes
+    const sorted = nodes
       .slice()
-      .sort((a, b) => Math.atan2(a[1].y - centerY, a[1].x - centerX) - Math.atan2(b[1].y - centerY, b[1].x - centerX))
-      .filter((_, index) => index % step === 0);
+      .sort((a, b) => Math.atan2(a[1].y - centerY, a[1].x - centerX) - Math.atan2(b[1].y - centerY, b[1].x - centerX));
+
+    const result: Array<[string, { x: number; y: number }]> = [];
+    let lastAngle = -Infinity;
+
+    for (const node of sorted) {
+      const angle = Math.atan2(node[1].y - centerY, node[1].x - centerX);
+      if (angle - lastAngle >= minAngleGap) {
+        result.push(node);
+        lastAngle = angle;
+      }
+    }
+
+    return result;
   }
 
   private getCircularLabelFontSize(labelCount: number, isLargeTree: boolean): string {
@@ -496,7 +498,7 @@ class CanvasRenderer {
 
     // 绘制连接线
     const useCladeColors = config.branchColorMode !== 'single' && (tree.root.children?.length || 0) > 1;
-    const cladeColorMap = useCladeColors ? buildCladeColorMap(tree) : null;
+    const cladeColorMap = useCladeColors ? buildCladeColorMap(tree, config.branchColor || '#8f96a3') : null;
     this.ctx.lineWidth = branchWidth;
     layoutResult.links.forEach(link => {
       const source = layoutResult.nodes[link.source];
@@ -563,8 +565,7 @@ class CanvasRenderer {
           const dx = parentPos ? nodePos.x - parentPos.x : nodePos.x - this.canvas.width / 2;
           const dy = parentPos ? nodePos.y - parentPos.y : nodePos.y - this.canvas.height / 2;
           const len = Math.hypot(dx, dy) || 1;
-          const angle = Math.atan2(dy, dx);
-          labelDirection.set(nodeId, { angle, ux: dx / len, uy: dy / len });
+          labelDirection.set(nodeId, { angle: Math.atan2(dy, dx), ux: dx / len, uy: dy / len });
         });
       }
 
@@ -630,14 +631,13 @@ class CanvasRenderer {
     const labelOffset = 15; // 标签偏移距离
     const labelX = pos.x + labelOffset * ux;
     const labelY = pos.y + labelOffset * uy;
-    const isLeft = angle > Math.PI / 2 || angle < -Math.PI / 2;
-    const rotation = angle + (isLeft ? Math.PI : 0);
+    const rotation = angle;
     
     // 保存当前状态
     this.ctx.save();
     this.ctx.translate(labelX, labelY);
     this.ctx.rotate(rotation);
-    this.ctx.textAlign = isLeft ? 'end' : 'start';
+    this.ctx.textAlign = 'left';
     this.ctx.textBaseline = 'middle';
     this.ctx.fillText(text, 0, 0);
     this.ctx.restore();

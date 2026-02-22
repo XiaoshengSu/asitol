@@ -15,13 +15,13 @@
   let branchColor = '#8f96a3';
   let branchColorMode: 'single' | 'clade' = 'clade';
 
-  const scientificPalettes = [
-    { name: 'Slate', color: '#8f96a3' },
-    { name: 'Teal', color: '#4E8B8B' },
-    { name: 'Indigo', color: '#6574B8' },
-    { name: 'Olive', color: '#7E8B5B' },
-    { name: 'Rose', color: '#A46D7C' },
-    { name: 'Amber', color: '#B38A4C' }
+  const scientificSchemes = [
+    { name: 'Slate', base: '#8f96a3', gradient: 'linear-gradient(90deg, #2f3640 0%, #596275 35%, #8f96a3 60%, #c4cad4 80%, #e6eaef 100%)' },
+    { name: 'Teal', base: '#4E8B8B', gradient: 'linear-gradient(90deg, #1e3d3d 0%, #376b6b 35%, #4E8B8B 60%, #8fc1c1 80%, #d4eeee 100%)' },
+    { name: 'Indigo', base: '#6574B8', gradient: 'linear-gradient(90deg, #2c335e 0%, #4b5690 35%, #6574B8 60%, #a8b1df 80%, #e2e6f7 100%)' },
+    { name: 'Olive', base: '#7E8B5B', gradient: 'linear-gradient(90deg, #354029 0%, #5a6643 35%, #7E8B5B 60%, #b2bd93 80%, #e2e7d2 100%)' },
+    { name: 'Rose', base: '#A46D7C', gradient: 'linear-gradient(90deg, #4a333c 0%, #7b4e5b 35%, #A46D7C 60%, #d0a6b1 80%, #f0dee3 100%)' },
+    { name: 'Amber', base: '#B38A4C', gradient: 'linear-gradient(90deg, #4a3720 0%, #7c5c2f 35%, #B38A4C 60%, #d7bf8a 80%, #f1e4c7 100%)' }
   ];
 
   // 订阅UI状态变化
@@ -160,15 +160,15 @@
         统一配色
       </button>
     </div>
-    <div class="grid grid-cols-3 gap-2 mb-2">
-      {#each scientificPalettes as palette}
+    <div class="grid grid-cols-2 gap-2 mb-2">
+      {#each scientificSchemes as scheme}
         <button
-          class="text-[10px] text-white py-1 px-2 rounded border border-gray-600 hover:border-gray-400"
-          style="background-color: {palette.color}; opacity: {branchColor === palette.color ? 1 : 0.75}"
-          on:click={() => setBranchColor(palette.color)}
-          title={palette.name}
+          class="text-[10px] text-white py-2 px-2 rounded border border-gray-600 hover:border-gray-400 text-left"
+          style="background: {scheme.gradient}; opacity: {branchColor === scheme.base ? 1 : 0.75}"
+          on:click={() => setBranchColor(scheme.base)}
+          title={scheme.name}
         >
-          {palette.name}
+          {scheme.name}
         </button>
       {/each}
     </div>
