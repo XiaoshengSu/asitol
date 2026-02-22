@@ -51,12 +51,13 @@ export class SVGRenderer {
       return;
     }
 
-    const circularLeafIds = layoutResult.type === 'circular'
+    // 为圆形和径向布局计算叶节点
+    const circularLeafIds = (layoutResult.type === 'circular' || layoutResult.type === 'radial')
       ? new Set(Object.keys(layoutResult.nodes).filter(id => isLeafNode(tree.root, id)))
       : new Set<string>();
 
     const labelDirection = new Map<string, { angle: number; ux: number; uy: number }>();
-    if (layoutResult.type === 'circular') {
+    if (layoutResult.type === 'circular' || layoutResult.type === 'radial') {
       const parentById = new Map<string, string>();
       layoutResult.links.forEach(link => parentById.set(link.target, link.source));
       Object.entries(layoutResult.nodes).forEach(([id, pos]) => {
@@ -83,10 +84,15 @@ export class SVGRenderer {
         }
 
         if (layoutResult.type === 'circular') {
-          // 对于所有节点，使用矩形分叉，一直到底
+          // 对于圆形布局，使用矩形分叉
           const midX = (source.x + target.x) / 2;
           const midY = (source.y + target.y) / 2;
           return `M ${source.x} ${source.y} L ${midX} ${source.y} L ${midX} ${target.y} L ${target.x} ${target.y}`;
+        }
+        
+        if (layoutResult.type === 'radial') {
+          // 对于径向布局，使用直线分支
+          return `M ${source.x} ${source.y} L ${target.x} ${target.y}`;
         }
 
         return `M ${source.x} ${source.y} L ${target.x} ${target.y}`;
@@ -99,15 +105,15 @@ export class SVGRenderer {
         return ensureContrast(config.branchColor || '#888');
       })
       .attr('stroke-width', branchWidth)
-      .attr('stroke-opacity', layoutResult.type === 'circular' ? 0.75 : 1)
+      .attr('stroke-opacity', (layoutResult.type === 'circular' || layoutResult.type === 'radial') ? 0.75 : 1)
       .attr('fill', 'none');
 
     const allNodes = Object.entries(layoutResult.nodes);
-    const circularLeafNodes = layoutResult.type === 'circular'
+    const circularLeafNodes = (layoutResult.type === 'circular' || layoutResult.type === 'radial')
       ? allNodes.filter(([id]) => isLeafNode(tree.root, id))
       : [];
 
-    const nodeData = layoutResult.type === 'circular' && circularLeafNodes.length > 300
+    const nodeData = (layoutResult.type === 'circular' || layoutResult.type === 'radial') && circularLeafNodes.length > 300
       ? allNodes.filter(([id]) => !isLeafNode(tree.root, id))
       : allNodes;
 
@@ -125,7 +131,7 @@ export class SVGRenderer {
     uiStore.subscribe(state => showLabels = state.showLabels)();
 
     if (showLabels) {
-      const labelData = layoutResult.type === 'circular'
+      const labelData = (layoutResult.type === 'circular' || layoutResult.type === 'radial')
         ? this.selectCircularLabels(circularLeafNodes, centerX, centerY, isLargeTree)
         : allNodes;
 
@@ -136,12 +142,12 @@ export class SVGRenderer {
         .attr('class', 'label')
         .attr('fill', '#fff')
         .attr('dominant-baseline', 'middle')
-        .attr('font-size', layoutResult.type === 'circular'
+        .attr('font-size', (layoutResult.type === 'circular' || layoutResult.type === 'radial')
           ? this.getCircularLabelFontSize(labelData.length, isLargeTree)
           : (isLargeTree ? '10px' : '12px'))
         .attr('text-anchor', () => 'start')
         .attr('x', d => {
-          if (layoutResult.type === 'circular') {
+          if (layoutResult.type === 'circular' || layoutResult.type === 'radial') {
             const x = d[1].x;
             const y = d[1].y;
             const offset = this.getCircularLabelOffset(isLargeTree);
@@ -152,7 +158,7 @@ export class SVGRenderer {
           return d[1].x + 8;
         })
         .attr('y', d => {
-          if (layoutResult.type === 'circular') {
+          if (layoutResult.type === 'circular' || layoutResult.type === 'radial') {
             const x = d[1].x;
             const y = d[1].y;
             const offset = this.getCircularLabelOffset(isLargeTree);
@@ -163,7 +169,7 @@ export class SVGRenderer {
           return d[1].y + 3;
         })
         .attr('transform', d => {
-          if (layoutResult.type === 'circular') {
+          if (layoutResult.type === 'circular' || layoutResult.type === 'radial') {
             const x = d[1].x;
             const y = d[1].y;
             const offset = this.getCircularLabelOffset(isLargeTree);
@@ -205,7 +211,7 @@ export class SVGRenderer {
         const target = layoutResult.nodes[d.target];
 
         if (layoutResult.type === 'circular') {
-          // 对于所有节点，使用矩形分叉，一直到底
+          // 对于圆形布局，使用矩形分叉
           const midX = (source.x + target.x) / 2;
           const midY = (source.y + target.y) / 2;
           return `M ${source.x} ${source.y} L ${midX} ${source.y} L ${midX} ${target.y} L ${target.x} ${target.y}`;
@@ -213,6 +219,11 @@ export class SVGRenderer {
 
         if (layoutResult.type === 'rectangular') {
           return `M ${source.x} ${source.y} L ${target.x} ${source.y} L ${target.x} ${target.y}`;
+        }
+
+        if (layoutResult.type === 'radial') {
+          // 对于径向布局，使用直线分支
+          return `M ${source.x} ${source.y} L ${target.x} ${target.y}`;
         }
 
         return `M ${source.x} ${source.y} L ${target.x} ${target.y}`;
@@ -244,7 +255,7 @@ export class SVGRenderer {
     uiStore.subscribe(state => showLabels = state.showLabels)();
 
     const labelDirection = new Map<string, { angle: number; ux: number; uy: number }>();
-    if (layoutResult.type === 'circular') {
+    if (layoutResult.type === 'circular' || layoutResult.type === 'radial') {
       const parentById = new Map<string, string>();
       layoutResult.links.forEach(link => parentById.set(link.target, link.source));
       Object.entries(layoutResult.nodes).forEach(([id, pos]) => {
@@ -257,7 +268,7 @@ export class SVGRenderer {
       });
     }
 
-    if (showLabels && layoutResult.type === 'circular') {
+    if (showLabels && (layoutResult.type === 'circular' || layoutResult.type === 'radial')) {
       const sampledLabels = this.selectCircularLabels(leafNodes, centerX, centerY, true);
 
       this.g.selectAll('.label')

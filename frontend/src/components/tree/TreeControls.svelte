@@ -14,6 +14,7 @@
   let showLabels = true;
   let branchColor = '#8f96a3';
   let branchColorMode: 'single' | 'clade' = 'clade';
+  let currentLayout: LayoutType = 'rectangular';
 
   // 专业生信配色方案 - 基于科研期刊标准
   const colorSchemes = [
@@ -40,6 +41,11 @@
     showLabels = $uiStore.showLabels;
     branchColor = $uiStore.branchColor;
     branchColorMode = $uiStore.branchColorMode;
+  });
+
+  // 订阅树状态变化，获取当前布局类型
+  treeStore.subscribe($treeStore => {
+    currentLayout = $treeStore.layoutConfig.type;
   });
 
   // 放大
@@ -98,25 +104,25 @@
     <label class="block text-xs text-gray-400 mb-1">布局</label>
     <div class="grid grid-cols-2 gap-2">
       <button
-        class="text-xs bg-gray-700 hover:bg-gray-600 text-white py-1 px-2 rounded"
+        class="text-xs text-white py-1 px-2 rounded {currentLayout === 'rectangular' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}"
         on:click={() => changeLayout('rectangular')}
       >
         矩形
       </button>
       <button
-        class="text-xs bg-gray-700 hover:bg-gray-600 text-white py-1 px-2 rounded"
+        class="text-xs text-white py-1 px-2 rounded {currentLayout === 'circular' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}"
         on:click={() => changeLayout('circular')}
       >
         圆形
       </button>
       <button
-        class="text-xs bg-gray-700 hover:bg-gray-600 text-white py-1 px-2 rounded"
+        class="text-xs text-white py-1 px-2 rounded {currentLayout === 'radial' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}"
         on:click={() => changeLayout('radial')}
       >
         径向
       </button>
       <button
-        class="text-xs bg-gray-700 hover:bg-gray-600 text-white py-1 px-2 rounded"
+        class="text-xs text-white py-1 px-2 rounded {currentLayout === 'unrooted' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}"
         on:click={() => changeLayout('unrooted')}
       >
         无根
