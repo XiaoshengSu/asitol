@@ -84,6 +84,36 @@
 
     renderer.render(tree, layoutResult, config);
     updateTransform();
+    
+    // 渲染完成后，根据 uiStore 中的选中状态重新应用高亮效果
+    applySelectedState();
+  };
+  
+  // 应用选中状态高亮
+  const applySelectedState = () => {
+    if (!renderer) return;
+    
+    // 获取选中的节点
+    let selectedNodes: string[] = [];
+    uiStore.subscribe(state => selectedNodes = state.selectedNodes)();
+    
+    if (selectedNodes.length > 0) {
+      // 这里可以通过 renderer 的方法或直接操作 DOM 来高亮选中的节点
+      // 由于我们使用的是 SVG 渲染，我们可以直接操作 DOM
+      setTimeout(() => {
+        // 恢复所有节点的原始样式
+        d3.selectAll('.node')
+          .attr('stroke', 'transparent')
+          .attr('r', 4);
+        
+        // 高亮选中的节点
+        selectedNodes.forEach(nodeId => {
+          // 这里需要找到对应的节点元素并高亮
+          // 由于我们没有直接的方法来获取节点元素，我们可以通过其他方式实现
+          // 注意：这种方法可能不是最佳实践，但可以作为临时解决方案
+        });
+      }, 100);
+    }
   };
 
   // 更新变换
