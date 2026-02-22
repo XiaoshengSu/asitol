@@ -53,6 +53,10 @@ class SVGRenderer {
       return;
     }
 
+    const circularLeafIds = layoutResult.type === 'circular'
+      ? new Set(Object.keys(layoutResult.nodes).filter(id => this.isLeafNode(tree.root, id)))
+      : new Set<string>();
+
     // 绘制连接线
     this.g.selectAll('.link')
       .data(layoutResult.links)
@@ -71,8 +75,14 @@ class SVGRenderer {
           const targetRadius = Math.hypot(target.x - centerX, target.y - centerY);
           const sourceAngle = Math.atan2(source.y - centerY, source.x - centerX);
           const targetAngle = Math.atan2(target.y - centerY, target.x - centerX);
+          const isLeafTarget = circularLeafIds.has(d.target);
 
-          // 仿 iTOL：先沿半径方向，再走同心圆弧到子节点角度
+          // 叶端分支直接径向连接，减少最外层大量弧段造成的“灰饼”效应
+          if (isLeafTarget) {
+            return `M ${source.x} ${source.y} L ${target.x} ${target.y}`;
+          }
+
+          // 内部分支：先径向延伸，再走同心圆弧，更接近 iTOL 的圆形树骨架
           const sweep = this.shortestArcSweep(sourceAngle, targetAngle);
           return [
             `M ${source.x} ${source.y}`,
@@ -86,6 +96,7 @@ class SVGRenderer {
       })
       .attr('stroke', config.branchColor || '#888')
       .attr('stroke-width', branchWidth)
+      .attr('stroke-opacity', layoutResult.type === 'circular' ? 0.75 : 1)
       .attr('fill', 'none');
 
     const allNodes = Object.entries(layoutResult.nodes);
@@ -125,6 +136,7 @@ class SVGRenderer {
         .append('text')
         .attr('class', 'label')
         .attr('fill', '#fff')
+        .attr('dominant-baseline', 'middle')
         .attr('font-size', layoutResult.type === 'circular'
           ? this.getCircularLabelFontSize(labelData.length, isLargeTree)
           : (isLargeTree ? '10px' : '12px'))
@@ -177,14 +189,11 @@ class SVGRenderer {
             const y = d[1].y;
             const angle = Math.atan2(y - centerY, x - centerX);
             
-            // 计算旋转角度，使文本方向朝外，与圆周切线一致
-            let rotation = angle * (180 / Math.PI);
-            
-            // 对于左侧的标签，旋转180度，使文本可读
+            // 切向排版（angle + 90°），并在左半圈翻转，提升整体可读性
+            let rotation = angle * (180 / Math.PI) + 90;
             if (Math.abs(angle) > Math.PI / 2) {
               rotation += 180;
             }
-            
             return `rotate(${rotation}, ${x}, ${y})`;
           }
           return '';
@@ -249,6 +258,7 @@ class SVGRenderer {
         .append('text')
         .attr('class', 'label')
         .attr('fill', '#fff')
+        .attr('dominant-baseline', 'middle')
         .attr('font-size', this.getCircularLabelFontSize(leafNodes.length, true))
         .attr('text-anchor', d => {
           const x = d[1].x;
@@ -279,12 +289,10 @@ class SVGRenderer {
           const x = d[1].x;
           const y = d[1].y;
           const angle = Math.atan2(y - centerY, x - centerX);
-          let rotation = angle * (180 / Math.PI);
-          
+          let rotation = angle * (180 / Math.PI) + 90;
           if (Math.abs(angle) > Math.PI / 2) {
             rotation += 180;
           }
-          
           return `rotate(${rotation}, ${x}, ${y})`;
         })
         .text(d => {
