@@ -6,7 +6,7 @@
 <div class="min-h-screen bg-gray-900 flex flex-col items-center justify-center p-4">
   <div class="max-w-md w-full bg-gray-800 rounded-lg shadow-xl p-8 space-y-6">
     <div class="text-center">
-      <h1 class="text-2xl font-bold text-white mb-2">iTOL</h1>
+      <h1 class="text-2xl font-bold text-white mb-2">AS iTOL</h1>
       <p class="text-gray-400 text-sm">Interactive Tree Of Life</p>
       <p class="text-gray-500 text-xs mt-2">系统发育树可视化与注释工具</p>
     </div>
@@ -50,6 +50,6 @@
   </div>
 
   <div class="mt-8 text-xs text-gray-500">
-    © 2026 iTOL - 系统发育树可视化工具
+    © 2026 IOTA iTOL - 系统发育树可视化工具
   </div>
 </div>

@@ -19,57 +19,47 @@
   let uploadType: 'tree' | 'annotation' = 'tree';
   let annotationType: string = 'COLORSTRIP';
 
-  // 处理文件选择
-  const handleFileChange = (e: Event) => {
+  // 处理文件选择 - 实时读取文件
+  const handleFileChange = async (e: Event) => {
     const target = e.target as HTMLInputElement;
     if (target.files && target.files.length > 0) {
       file = target.files[0];
       error = null;
-    }
-  };
+      loading = true;
 
-  // 处理文件上传
-  const handleUpload = async () => {
-    if (!file) {
-      error = '请选择文件';
-      return;
-    }
-
-    loading = true;
-    error = null;
-
-    try {
-      if (uploadType === 'tree') {
-        // 上传树文件
-        const text = await file.text();
-        const tree = parser.parseNewick(text);
-        treeStore.setTree(tree);
-        treeStore.setLoading(false);
-        dispatch('treeLoaded', tree);
-        dispatch('fileUploaded', file);
-      } else {
-        // 上传注释文件
-        const text = await file.text();
-        const annotation = parser.parseAnnotation(text, annotationType);
-        annotationStore.addAnnotation(annotation);
-        // 添加为图层
-        annotationStore.addLayer({
-          id: annotation.id,
-          name: annotation.name,
-          type: annotation.type,
-          data: annotation,
-          visible: true,
-          order: annotationStore.subscribe($store => $store.layers.length)(),
-          config: annotation.config || {}
-        });
-        dispatch('annotationLoaded', annotation);
-        dispatch('fileUploaded', file);
+      try {
+        if (uploadType === 'tree') {
+          // 读取树文件
+          const text = await file.text();
+          const tree = parser.parseNewick(text);
+          treeStore.setTree(tree);
+          treeStore.setLoading(false);
+          dispatch('treeLoaded', tree);
+          dispatch('fileUploaded', file);
+        } else {
+          // 读取注释文件
+          const text = await file.text();
+          const annotation = parser.parseAnnotation(text, annotationType);
+          annotationStore.addAnnotation(annotation);
+          // 添加为图层
+          annotationStore.addLayer({
+            id: annotation.id,
+            name: annotation.name,
+            type: annotation.type,
+            data: annotation,
+            visible: true,
+            order: annotationStore.subscribe($store => $store.layers.length)(),
+            config: annotation.config || {}
+          });
+          dispatch('annotationLoaded', annotation);
+          dispatch('fileUploaded', file);
+        }
+      } catch (err) {
+        error = `读取失败: ${err instanceof Error ? err.message : '未知错误'}`;
+        console.error('File read error:', err);
+      } finally {
+        loading = false;
       }
-    } catch (err) {
-      error = `上传失败: ${err instanceof Error ? err.message : '未知错误'}`;
-      console.error('File upload error:', err);
-    } finally {
-      loading = false;
     }
   };
 
@@ -139,7 +129,7 @@
   <!-- 文件选择 -->
   <div class="mb-3">
     <label class="block text-xs text-gray-400 mb-1">
-      {uploadType === 'tree' ? '选择树文件 (Newick格式)' : '选择注释文件'}
+      {uploadType === 'tree' ? '选择树文件 (Newick格式) - 自动读取' : '选择注释文件 - 自动读取'}
     </label>
     <input
       type="file"
@@ -147,7 +137,7 @@
       on:change={handleFileChange}
     />
     {#if file}
-      <p class="text-xs text-gray-400 mt-1">{file.name}</p>
+      <p class="text-xs text-gray-400 mt-1">{file.name} {loading ? ' - 读取中...' : ''}</p>
     {/if}
   </div>
 
@@ -158,16 +148,9 @@
 
   <!-- 操作按钮 -->
   <div class="flex gap-2">
-    <button
-      class="flex-1 text-xs bg-blue-600 hover:bg-blue-500 text-white py-1 px-2 rounded disabled:opacity-50"
-      on:click={handleUpload}
-      disabled={!file || loading}
-    >
-      {loading ? '上传中...' : '上传'}
-    </button>
     {#if uploadType === 'tree'}
       <button
-        class="text-xs bg-gray-700 hover:bg-gray-600 text-white py-1 px-2 rounded disabled:opacity-50"
+        class="flex-1 text-xs bg-gray-700 hover:bg-gray-600 text-white py-1 px-2 rounded disabled:opacity-50"
         on:click={loadExampleTree}
         disabled={loading}
       >

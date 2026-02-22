@@ -15,7 +15,14 @@
   let branchColor = '#8f96a3';
   let branchColorMode: 'single' | 'clade' = 'clade';
 
-  const scientificSchemes = [
+  // 专业生信配色方案
+  const colorSchemes = [
+    // 主调色板色系
+    { name: 'Primary', base: '#3182BD', gradient: 'linear-gradient(90deg, #08306B 0%, #2171B5 25%, #3182BD 50%, #6BAED6 75%, #EFF3FF 100%)' },
+    { name: 'Colorblind', base: '#0072B2', gradient: 'linear-gradient(90deg, #0072B2 0%, #009E73 25%, #D55E00 50%, #CC79A7 75%, #F0E442 100%)' },
+    { name: 'Sequential', base: '#3182BD', gradient: 'linear-gradient(90deg, #08306B 0%, #2171B5 25%, #3182BD 50%, #6BAED6 75%, #EFF3FF 100%)' },
+    { name: 'Diverging', base: '#B2182B', gradient: 'linear-gradient(90deg, #B2182B 0%, #F4A582 25%, #F7F7F7 50%, #92C5DE 75%, #2166AC 100%)' },
+    // 经典色系
     { name: 'Slate', base: '#8f96a3', gradient: 'linear-gradient(90deg, #2f3640 0%, #596275 35%, #8f96a3 60%, #c4cad4 80%, #e6eaef 100%)' },
     { name: 'Teal', base: '#4E8B8B', gradient: 'linear-gradient(90deg, #1e3d3d 0%, #376b6b 35%, #4E8B8B 60%, #8fc1c1 80%, #d4eeee 100%)' },
     { name: 'Indigo', base: '#6574B8', gradient: 'linear-gradient(90deg, #2c335e 0%, #4b5690 35%, #6574B8 60%, #a8b1df 80%, #e2e6f7 100%)' },
@@ -146,31 +153,30 @@
     <label class="block text-xs text-gray-400 mb-1">树枝配色（科研色系）</label>
     <div class="grid grid-cols-2 gap-2 mb-2">
       <button
-        class="text-xs bg-gray-700 hover:bg-gray-600 text-white py-1 px-2 rounded border border-gray-600"
+        class="text-xs bg-gray-700 hover:bg-gray-600 text-white py-1 px-2 rounded border border-gray-600 text-left"
         style="opacity: {branchColorMode === 'clade' ? 1 : 0.6}"
         on:click={() => setBranchColorMode('clade')}
       >
         分组配色
       </button>
       <button
-        class="text-xs bg-gray-700 hover:bg-gray-600 text-white py-1 px-2 rounded border border-gray-600"
+        class="text-xs bg-gray-700 hover:bg-gray-600 text-white py-1 px-2 rounded border border-gray-600 text-left"
         style="opacity: {branchColorMode === 'single' ? 1 : 0.6}"
         on:click={() => setBranchColorMode('single')}
       >
         统一配色
       </button>
     </div>
-    <div class="grid grid-cols-2 gap-2 mb-2">
-      {#each scientificSchemes as scheme}
-        <button
-          class="text-[10px] text-white py-2 px-2 rounded border border-gray-600 hover:border-gray-400 text-left"
-          style="background: {scheme.gradient}; opacity: {branchColor === scheme.base ? 1 : 0.75}"
-          on:click={() => setBranchColor(scheme.base)}
-          title={scheme.name}
-        >
-          {scheme.name}
-        </button>
-      {/each}
+    <div class="mb-2">
+      <select
+        class="w-full text-xs bg-gray-700 text-gray-300 rounded p-1 border border-gray-600 text-left"
+        on:change={(e) => setBranchColor((e.currentTarget as HTMLSelectElement).value)}
+        value={branchColor}
+      >
+        {#each colorSchemes as scheme}
+          <option value={scheme.base}>{scheme.name}</option>
+        {/each}
+      </select>
     </div>
     <div class="flex items-center gap-2">
       <input
@@ -179,7 +185,7 @@
         bind:value={branchColor}
         on:change={(e) => setBranchColor((e.currentTarget as HTMLInputElement).value)}
       />
-      <span class="text-[10px] text-gray-400">{branchColor}</span>
+      <span class="text-[10px] text-gray-400 text-left">{branchColor}</span>
     </div>
   </div>
 

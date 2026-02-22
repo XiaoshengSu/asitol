@@ -1,23 +1,61 @@
 import * as d3 from 'd3';
 import type { Tree, TreeNode } from '../../types/tree';
 
-const DEFAULT_CLADE_PALETTE = [
-  '#4E8B8B',
-  '#6574B8',
-  '#7E8B5B',
-  '#A46D7C',
-  '#B38A4C',
-  '#8f96a3',
-  '#5C7FA3',
-  '#C07F5A',
-  '#5F8B74',
-  '#9B7FAE',
-  '#6B8E23',
-  '#8B4513',
-  '#483D8B',
-  '#20B2AA',
-  '#FF6347'
-];
+// 专业生信配色方案：基于ColorBrewer和科学可视化最佳实践
+const PALETTES = {
+  // 主调色板：专业、清晰、色盲友好
+  primary: [
+    '#3182BD', // 蓝色
+    '#E6550D', // 橙色
+    '#31A354', // 绿色
+    '#756BB1', // 紫色
+    '#636363', // 灰色
+    '#DD8452', // 棕色
+    '#80B1D3', // 浅蓝
+    '#FC8D62', // 浅橙
+    '#99D594', // 浅绿
+    '#BCBDDC', // 浅紫
+    '#BDBDBD', // 浅灰
+    '#E5C494'  // 浅棕
+  ],
+  
+  // 色盲友好调色板
+  colorblind: [
+    '#0072B2', // 蓝色
+    '#009E73', // 绿色
+    '#D55E00', // 橙色
+    '#CC79A7', // 粉色
+    '#F0E442', // 黄色
+    '#56B4E9', // 浅蓝
+    '#E69F00', // 金色
+    '#999999'  // 灰色
+  ],
+  
+  // 渐变色方案（用于连续数据）
+  sequential: [
+    '#EFF3FF',
+    '#C6DBEF',
+    '#9ECAE1',
+    '#6BAED6',
+    '#4292C6',
+    '#2171B5',
+    '#08519C',
+    '#08306B'
+  ],
+  
+  // 发散色方案（用于对比数据）
+  diverging: [
+    '#B2182B',
+    '#D6604D',
+    '#F4A582',
+    '#FDDBC7',
+    '#F7F7F7',
+    '#D1E5F0',
+    '#92C5DE',
+    '#4393C3',
+    '#2166AC'
+  ]
+};
 
 const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
 
@@ -33,42 +71,69 @@ const getTreeDepth = (node: TreeNode): number => {
 
 const getCladePalette = (count: number, baseColor: string): string[] => {
   const base = d3.hsl(baseColor);
-  if (Number.isNaN(base.h) || Number.isNaN(base.s) || Number.isNaN(base.l)) {
-    return DEFAULT_CLADE_PALETTE.slice(0, count);
-  }
   
-  // 对于较少的颜色，使用基于基础色的亮度变化
-  if (count <= 6) {
-    const hue = base.h;
-    const saturation = clamp(base.s === 0 ? 0.55 : base.s, 0.35, 0.85);
-    const minLight = 0.32;
-    const maxLight = 0.78;
-    
+  // 优先基于用户选择的颜色生成调色板
+  // 这确保颜色选择器的颜色能够生效
+  if (!Number.isNaN(base.h) && !Number.isNaN(base.s) && !Number.isNaN(base.l)) {
+    // 基于基础色生成专业的分类调色板
+    // 使用感知均匀的颜色空间和合理的色相分布
     const colors: string[] = [];
+    const hueStep = 360 / count;
+    const saturation = clamp(base.s === 0 ? 0.7 : base.s, 0.5, 0.8);
+    const lightness = clamp(base.l === 0 ? 0.5 : base.l, 0.4, 0.6);
+    
     for (let i = 0; i < count; i += 1) {
-      const t = i / Math.max(1, count - 1);
-      const lightness = minLight + (maxLight - minLight) * t;
+      // 确保色相分布均匀，避免相似颜色
+      const hue = (base.h + i * hueStep) % 360;
       colors.push(d3.hsl(hue, saturation, lightness).formatHex());
     }
     return colors;
   }
   
-  // 对于较多的颜色，使用不同的色相
-  if (count <= DEFAULT_CLADE_PALETTE.length) {
-    return DEFAULT_CLADE_PALETTE.slice(0, count);
+  // 如果基础色无效，使用专业调色板
+  if (count <= PALETTES.primary.length) {
+    return PALETTES.primary.slice(0, count);
   }
   
-  // 对于更多的颜色，生成基于不同色相的调色板
-  const colors: string[] = [];
-  const hueStep = 360 / count;
-  const saturation = clamp(base.s === 0 ? 0.6 : base.s, 0.4, 0.8);
-  const lightness = clamp(base.l === 0 ? 0.5 : base.l, 0.35, 0.7);
-  
-  for (let i = 0; i < count; i += 1) {
-    const hue = (base.h + i * hueStep) % 360;
-    colors.push(d3.hsl(hue, saturation, lightness).formatHex());
+  // 对于中等数量的颜色，使用色盲友好调色板
+  if (count <= PALETTES.colorblind.length) {
+    return PALETTES.colorblind.slice(0, count);
   }
-  return colors;
+  
+  // 对于大量颜色，使用主调色板并循环
+  return Array.from({ length: count }, (_, i) => 
+    PALETTES.primary[i % PALETTES.primary.length]
+  );
+};
+
+// 生成渐变色方案（用于连续数据或深度表示）
+export const generateSequentialPalette = (count: number, startColor: string = '#3182BD', endColor: string = '#EFF3FF'): string[] => {
+  const interpolator = d3.interpolateHsl(startColor, endColor);
+  return Array.from({ length: count }, (_, i) => {
+    const t = i / Math.max(1, count - 1);
+    return d3.hsl(interpolator(t)).formatHex();
+  });
+};
+
+// 生成发散色方案（用于对比数据）
+export const generateDivergingPalette = (count: number, midpoint: number = 0.5): string[] => {
+  const colors = PALETTES.diverging;
+  if (count <= colors.length) {
+    return colors.slice(0, count);
+  }
+  
+  // 如果需要更多颜色，使用插值
+  const leftInterpolator = d3.interpolateHsl(colors[0], colors[Math.floor(colors.length * midpoint)]);
+  const rightInterpolator = d3.interpolateHsl(colors[Math.floor(colors.length * midpoint)], colors[colors.length - 1]);
+  
+  return Array.from({ length: count }, (_, i) => {
+    const t = i / (count - 1);
+    if (t <= midpoint) {
+      return d3.hsl(leftInterpolator(t / midpoint)).formatHex();
+    } else {
+      return d3.hsl(rightInterpolator((t - midpoint) / (1 - midpoint))).formatHex();
+    }
+  });
 };
 
 const assignCladeColor = (node: TreeNode, color: string, map: Map<string, string>): void => {
@@ -87,50 +152,30 @@ export const buildCladeColorMap = (tree: Tree, baseColor: string): Map<string, s
   const treeDepth = getTreeDepth(tree.root);
   const totalLeaves = countLeaves(tree.root);
   
-  // 根据树的大小和深度决定颜色分配策略
-  if (children.length <= 6 || totalLeaves <= 50) {
-    // 对于较小的树或分支较少的树，使用根节点的直接子节点作为分组
-    const ordered = children
-      .slice()
-      .sort((a, b) => countLeaves(b) - countLeaves(a));
-    const palette = getCladePalette(ordered.length, baseColor);
+  // 生信专业配色策略
+  // 优先为根节点的每个直接子分支分配不同颜色
+  // 这是生信分析中最常见的需求：每个大分支一个颜色
+  const ordered = children
+    .slice()
+    .sort((a, b) => countLeaves(b) - countLeaves(a));
+  const palette = getCladePalette(ordered.length, baseColor);
 
-    ordered.forEach((child, index) => {
-      assignCladeColor(child, palette[index], map);
-    });
-  } else {
-    // 对于较大的树，递归分配颜色到更深层次的分支
-    const assignRecursiveColors = (node: TreeNode, depth: number, maxDepth: number, parentColor: string): void => {
-      if (!node.children || node.children.length === 0) {
-        map.set(node.id, parentColor);
-        return;
-      }
-      
-      // 只在适当的深度分配新颜色
-      if (depth < maxDepth && node.children.length > 1) {
-        const palette = getCladePalette(node.children.length, parentColor);
-        node.children.forEach((child, index) => {
-          assignRecursiveColors(child, depth + 1, maxDepth, palette[index]);
-        });
-      } else {
-        // 对于较深的节点，使用父节点的颜色
-        node.children.forEach(child => {
-          assignRecursiveColors(child, depth + 1, maxDepth, parentColor);
-        });
-      }
-      
-      map.set(node.id, parentColor);
-    };
-    
-    // 确定最大分配深度
-    const maxColorDepth = Math.min(3, treeDepth - 1);
-    const rootPalette = getCladePalette(children.length, baseColor);
-    
-    children.forEach((child, index) => {
-      assignRecursiveColors(child, 1, maxColorDepth, rootPalette[index]);
-    });
-  }
+  ordered.forEach((child, index) => {
+    assignCladeColor(child, palette[index], map);
+  });
 
+  return map;
+};
+
+// 基于属性值的颜色映射（用于分类数据）
+export const buildAttributeColorMap = (categories: string[], baseColor: string): Map<string, string> => {
+  const map = new Map<string, string>();
+  const palette = getCladePalette(categories.length, baseColor);
+  
+  categories.forEach((category, index) => {
+    map.set(category, palette[index]);
+  });
+  
   return map;
 };
 
