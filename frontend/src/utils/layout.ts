@@ -204,7 +204,7 @@ class CircularLayout implements LayoutAlgorithm {
   }
 }
 
-// 径向布局算法
+// 径向布局算法 - 更自由的布局方式
 class RadialLayout implements LayoutAlgorithm {
   compute(params: LayoutParams): LayoutResult {
     const { tree, width, height, padding } = params;
@@ -220,42 +220,24 @@ class RadialLayout implements LayoutAlgorithm {
     this.collectLeaves(tree.root, leaves);
     const leafCount = leaves.length;
     
-    // 计算树的深度
-    const treeDepth = this.calculateTreeDepth(tree.root);
-    
-    // 计算半径步长，确保内部节点有足够空间
-    const radiusStep = maxRadius / Math.max(2, treeDepth);
-    
-    // 为叶节点分配角度，从顶部开始，确保严格均匀分布
-    const angleStep = (2 * Math.PI) / leafCount;
-    const leafAngles = new Map<string, number>();
+    // 为叶节点分配位置，更自由地分布在空间中
+    // 不再严格限制在圆周上，而是基于角度均匀分布但半径可变
     leaves.forEach((leaf, index) => {
-      // 从顶部开始，顺时针分配角度
-      const angle = index * angleStep - Math.PI / 2;
-      leafAngles.set(leaf.id, angle);
+      // 计算角度，从顶部开始
+      const angle = (index / leafCount) * 2 * Math.PI - Math.PI / 2;
+      // 半径在最大半径的80%-100%之间变化，增加自由度
+      const radius = maxRadius * (0.8 + 0.2 * Math.random());
+      const x = centerX + radius * Math.cos(angle);
+      const y = centerY + radius * Math.sin(angle);
+      nodes[leaf.id] = { x, y };
     });
 
-    // 首先布局所有叶节点，严格分布在最大半径的圆周上
-    for (const leaf of leaves) {
-      const angle = leafAngles.get(leaf.id) || 0;
-      const x = centerX + maxRadius * Math.cos(angle);
-      const y = centerY + maxRadius * Math.sin(angle);
-      nodes[leaf.id] = { x, y };
-    }
-
-    // 计算每个内部节点的角度范围
-    const nodeAngles = new Map<string, { min: number; max: number }>();
-    this.calculateNodeAngles(tree.root, leafAngles, nodeAngles);
-
-    // 布局内部节点，基于角度范围和深度
+    // 自下而上布局内部节点，基于子节点的平均位置
     this.layoutInternalNodes(
       tree.root, 
       centerX, 
       centerY, 
       maxRadius, 
-      radiusStep, 
-      0, // 初始深度
-      nodeAngles, 
       nodes, 
       links
     );
@@ -268,13 +250,6 @@ class RadialLayout implements LayoutAlgorithm {
     };
   }
 
-  private calculateTreeDepth(node: TreeNode): number {
-    if (!node.children || node.children.length === 0) {
-      return 1;
-    }
-    return 1 + Math.max(...node.children.map(child => this.calculateTreeDepth(child)));
-  }
-
   private collectLeaves(node: TreeNode, leaves: TreeNode[]): void {
     if (!node.children || node.children.length === 0) {
       leaves.push(node);
@@ -285,43 +260,11 @@ class RadialLayout implements LayoutAlgorithm {
     }
   }
 
-  private calculateNodeAngles(
-    node: TreeNode,
-    leafAngles: Map<string, number>,
-    nodeAngles: Map<string, { min: number; max: number }>
-  ): void {
-    if (!node.children || node.children.length === 0) {
-      // 叶节点的角度范围就是自身的角度
-      const angle = leafAngles.get(node.id) || 0;
-      nodeAngles.set(node.id, { min: angle, max: angle });
-      return;
-    }
-
-    // 递归计算子节点的角度范围
-    let minAngle = Infinity;
-    let maxAngle = -Infinity;
-    
-    for (const child of node.children) {
-      this.calculateNodeAngles(child, leafAngles, nodeAngles);
-      const childAngleRange = nodeAngles.get(child.id);
-      if (childAngleRange) {
-        minAngle = Math.min(minAngle, childAngleRange.min);
-        maxAngle = Math.max(maxAngle, childAngleRange.max);
-      }
-    }
-
-    // 存储当前节点的角度范围
-    nodeAngles.set(node.id, { min: minAngle, max: maxAngle });
-  }
-
   private layoutInternalNodes(
     node: TreeNode,
     centerX: number,
     centerY: number,
     maxRadius: number,
-    radiusStep: number,
-    depth: number,
-    nodeAngles: Map<string, { min: number; max: number }>,
     nodes: Record<string, { x: number; y: number }>,
     links: Array<{ source: string; target: string }>
   ): void {
@@ -331,33 +274,50 @@ class RadialLayout implements LayoutAlgorithm {
 
     // 递归布局子节点
     for (const child of node.children) {
-      this.layoutInternalNodes(
-        child, 
-        centerX, 
-        centerY, 
-        maxRadius, 
-        radiusStep, 
-        depth + 1, 
-        nodeAngles, 
-        nodes, 
-        links
-      );
+      this.layoutInternalNodes(child, centerX, centerY, maxRadius, nodes, links);
       links.push({ source: node.id, target: child.id });
     }
 
-    // 计算当前节点的位置
-    const angleRange = nodeAngles.get(node.id);
-    if (angleRange) {
-      // 使用角度范围的中间值作为节点角度
-      const angle = (angleRange.min + angleRange.max) / 2;
+    // 计算子节点的平均位置
+    let sumX = 0;
+    let sumY = 0;
+    let validChildren = 0;
+    
+    for (const child of node.children) {
+      const childPos = nodes[child.id];
+      if (childPos) {
+        sumX += childPos.x;
+        sumY += childPos.y;
+        validChildren++;
+      }
+    }
+
+    if (validChildren > 0) {
+      // 计算子节点的平均位置
+      const avgX = sumX / validChildren;
+      const avgY = sumY / validChildren;
       
-      // 计算节点半径：基于深度，确保内部节点在适当位置
-      const radius = maxRadius - (depth * radiusStep);
-      const finalRadius = Math.max(radiusStep, radius); // 确保最小半径
+      // 计算到中心的向量
+      const dx = avgX - centerX;
+      const dy = avgY - centerY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      // 内部节点位于中心和子节点平均位置之间
+      // 距离中心的距离为子节点平均距离的60%-80%，增加自由度
+      const factor = 0.6 + 0.2 * Math.random();
+      const nodeDistance = Math.max(20, distance * factor); // 确保最小距离
       
       // 计算节点位置
-      const x = centerX + finalRadius * Math.cos(angle);
-      const y = centerY + finalRadius * Math.sin(angle);
+      let x, y;
+      if (distance > 0) {
+        // 有方向时，沿向量方向布局
+        x = centerX + (dx / distance) * nodeDistance;
+        y = centerY + (dy / distance) * nodeDistance;
+      } else {
+        // 无方向时，随机布局在中心附近
+        x = centerX + (Math.random() - 0.5) * 40;
+        y = centerY + (Math.random() - 0.5) * 40;
+      }
       
       nodes[node.id] = { x, y };
     }

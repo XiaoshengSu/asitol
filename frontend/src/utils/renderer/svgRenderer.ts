@@ -52,21 +52,30 @@ export class SVGRenderer {
     }
 
     // 为圆形和径向布局计算叶节点
-    const circularLeafIds = (layoutResult.type === 'circular' || layoutResult.type === 'radial')
+    const circularLeafIds = (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted')
       ? new Set(Object.keys(layoutResult.nodes).filter(id => isLeafNode(tree.root, id)))
       : new Set<string>();
 
     const labelDirection = new Map<string, { angle: number; ux: number; uy: number }>();
-    if (layoutResult.type === 'circular' || layoutResult.type === 'radial') {
+    if (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted') {
       const parentById = new Map<string, string>();
       layoutResult.links.forEach(link => parentById.set(link.target, link.source));
       Object.entries(layoutResult.nodes).forEach(([id, pos]) => {
         const parentId = parentById.get(id);
         const parentPos = parentId ? layoutResult.nodes[parentId] : null;
-        const dx = parentPos ? pos.x - parentPos.x : pos.x - centerX;
-        const dy = parentPos ? pos.y - parentPos.y : pos.y - centerY;
-        const len = Math.hypot(dx, dy) || 1;
-        labelDirection.set(id, { angle: Math.atan2(dy, dx), ux: dx / len, uy: dy / len });
+        if (parentPos) {
+          // 有父节点时，基于父节点方向
+          const dx = pos.x - parentPos.x;
+          const dy = pos.y - parentPos.y;
+          const len = Math.hypot(dx, dy) || 1;
+          labelDirection.set(id, { angle: Math.atan2(dy, dx), ux: dx / len, uy: dy / len });
+        } else {
+          // 无父节点时（根节点），基于中心方向
+          const dx = pos.x - centerX;
+          const dy = pos.y - centerY;
+          const len = Math.hypot(dx, dy) || 1;
+          labelDirection.set(id, { angle: Math.atan2(dy, dx), ux: dx / len, uy: dy / len });
+        }
       });
     }
 
@@ -90,8 +99,8 @@ export class SVGRenderer {
           return `M ${source.x} ${source.y} L ${midX} ${source.y} L ${midX} ${target.y} L ${target.x} ${target.y}`;
         }
         
-        if (layoutResult.type === 'radial') {
-          // 对于径向布局，使用直线分支
+        if (layoutResult.type === 'radial' || layoutResult.type === 'unrooted') {
+          // 对于径向和无根布局，使用直线分支
           return `M ${source.x} ${source.y} L ${target.x} ${target.y}`;
         }
 
@@ -109,11 +118,11 @@ export class SVGRenderer {
       .attr('fill', 'none');
 
     const allNodes = Object.entries(layoutResult.nodes);
-    const circularLeafNodes = (layoutResult.type === 'circular' || layoutResult.type === 'radial')
+    const circularLeafNodes = (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted')
       ? allNodes.filter(([id]) => isLeafNode(tree.root, id))
       : [];
 
-    const nodeData = (layoutResult.type === 'circular' || layoutResult.type === 'radial') && circularLeafNodes.length > 300
+    const nodeData = (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted') && circularLeafNodes.length > 300
       ? allNodes.filter(([id]) => !isLeafNode(tree.root, id))
       : allNodes;
 
@@ -131,7 +140,7 @@ export class SVGRenderer {
     uiStore.subscribe(state => showLabels = state.showLabels)();
 
     if (showLabels) {
-      const labelData = (layoutResult.type === 'circular' || layoutResult.type === 'radial')
+      const labelData = (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted')
         ? this.selectCircularLabels(circularLeafNodes, centerX, centerY, isLargeTree)
         : allNodes;
 
@@ -142,12 +151,12 @@ export class SVGRenderer {
         .attr('class', 'label')
         .attr('fill', '#fff')
         .attr('dominant-baseline', 'middle')
-        .attr('font-size', (layoutResult.type === 'circular' || layoutResult.type === 'radial')
+        .attr('font-size', (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted')
           ? this.getCircularLabelFontSize(labelData.length, isLargeTree)
           : (isLargeTree ? '10px' : '12px'))
         .attr('text-anchor', () => 'start')
         .attr('x', d => {
-          if (layoutResult.type === 'circular' || layoutResult.type === 'radial') {
+          if (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted') {
             const x = d[1].x;
             const y = d[1].y;
             const offset = this.getCircularLabelOffset(isLargeTree);
@@ -158,7 +167,7 @@ export class SVGRenderer {
           return d[1].x + 8;
         })
         .attr('y', d => {
-          if (layoutResult.type === 'circular' || layoutResult.type === 'radial') {
+          if (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted') {
             const x = d[1].x;
             const y = d[1].y;
             const offset = this.getCircularLabelOffset(isLargeTree);
@@ -169,7 +178,7 @@ export class SVGRenderer {
           return d[1].y + 3;
         })
         .attr('transform', d => {
-          if (layoutResult.type === 'circular' || layoutResult.type === 'radial') {
+          if (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted') {
             const x = d[1].x;
             const y = d[1].y;
             const offset = this.getCircularLabelOffset(isLargeTree);
@@ -255,20 +264,29 @@ export class SVGRenderer {
     uiStore.subscribe(state => showLabels = state.showLabels)();
 
     const labelDirection = new Map<string, { angle: number; ux: number; uy: number }>();
-    if (layoutResult.type === 'circular' || layoutResult.type === 'radial') {
+    if (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted') {
       const parentById = new Map<string, string>();
       layoutResult.links.forEach(link => parentById.set(link.target, link.source));
       Object.entries(layoutResult.nodes).forEach(([id, pos]) => {
         const parentId = parentById.get(id);
         const parentPos = parentId ? layoutResult.nodes[parentId] : null;
-        const dx = parentPos ? pos.x - parentPos.x : pos.x - centerX;
-        const dy = parentPos ? pos.y - parentPos.y : pos.y - centerY;
-        const len = Math.hypot(dx, dy) || 1;
-        labelDirection.set(id, { angle: Math.atan2(dy, dx), ux: dx / len, uy: dy / len });
+        if (parentPos) {
+          // 有父节点时，基于父节点方向
+          const dx = pos.x - parentPos.x;
+          const dy = pos.y - parentPos.y;
+          const len = Math.hypot(dx, dy) || 1;
+          labelDirection.set(id, { angle: Math.atan2(dy, dx), ux: dx / len, uy: dy / len });
+        } else {
+          // 无父节点时（根节点），基于中心方向
+          const dx = pos.x - centerX;
+          const dy = pos.y - centerY;
+          const len = Math.hypot(dx, dy) || 1;
+          labelDirection.set(id, { angle: Math.atan2(dy, dx), ux: dx / len, uy: dy / len });
+        }
       });
     }
 
-    if (showLabels && (layoutResult.type === 'circular' || layoutResult.type === 'radial')) {
+    if (showLabels && (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted')) {
       const sampledLabels = this.selectCircularLabels(leafNodes, centerX, centerY, true);
 
       this.g.selectAll('.label')
