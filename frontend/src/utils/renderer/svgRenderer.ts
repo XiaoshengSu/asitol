@@ -83,21 +83,10 @@ export class SVGRenderer {
         }
 
         if (layoutResult.type === 'circular') {
-          const targetRadius = Math.hypot(target.x - centerX, target.y - centerY);
-          const sourceAngle = Math.atan2(source.y - centerY, source.x - centerX);
-          const targetAngle = Math.atan2(target.y - centerY, target.x - centerX);
-          const isLeafTarget = circularLeafIds.has(d.target);
-
-          if (isLeafTarget) {
-            return `M ${source.x} ${source.y} L ${target.x} ${target.y}`;
-          }
-
-          const sweep = this.shortestArcSweep(sourceAngle, targetAngle);
-          return [
-            `M ${source.x} ${source.y}`,
-            `L ${centerX + targetRadius * Math.cos(sourceAngle)} ${centerY + targetRadius * Math.sin(sourceAngle)}`,
-            `A ${targetRadius} ${targetRadius} 0 0 ${sweep > 0 ? 1 : 0} ${target.x} ${target.y}`
-          ].join(' ');
+          // 对于所有节点，使用矩形分叉，一直到底
+          const midX = (source.x + target.x) / 2;
+          const midY = (source.y + target.y) / 2;
+          return `M ${source.x} ${source.y} L ${midX} ${source.y} L ${midX} ${target.y} L ${target.x} ${target.y}`;
         }
 
         return `M ${source.x} ${source.y} L ${target.x} ${target.y}`;
@@ -215,7 +204,10 @@ export class SVGRenderer {
         const target = layoutResult.nodes[d.target];
 
         if (layoutResult.type === 'circular') {
-          return `M ${source.x} ${source.y} L ${target.x} ${target.y}`;
+          // 对于所有节点，使用矩形分叉，一直到底
+          const midX = (source.x + target.x) / 2;
+          const midY = (source.y + target.y) / 2;
+          return `M ${source.x} ${source.y} L ${midX} ${source.y} L ${midX} ${target.y} L ${target.x} ${target.y}`;
         }
 
         if (layoutResult.type === 'rectangular') {
