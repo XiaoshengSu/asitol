@@ -104,6 +104,21 @@ class SVGRenderer {
       ? allNodes.filter(([id]) => this.isLeafNode(tree.root, id))
       : [];
 
+    const labelDirection = new Map<string, { angle: number; ux: number; uy: number }>();
+    if (layoutResult.type === 'circular') {
+      const parentById = new Map<string, string>();
+      layoutResult.links.forEach(link => parentById.set(link.target, link.source));
+      allNodes.forEach(([id, pos]) => {
+        const parentId = parentById.get(id);
+        const parentPos = parentId ? layoutResult.nodes[parentId] : null;
+        const dx = parentPos ? pos.x - parentPos.x : pos.x - centerX;
+        const dy = parentPos ? pos.y - parentPos.y : pos.y - centerY;
+        const len = Math.hypot(dx, dy) || 1;
+        const angle = Math.atan2(dy, dx);
+        labelDirection.set(id, { angle, ux: dx / len, uy: dy / len });
+      });
+    }
+
     const nodeData = layoutResult.type === 'circular' && circularLeafNodes.length > 300
       ? allNodes.filter(([id]) => !this.isLeafNode(tree.root, id))
       : allNodes;
@@ -144,7 +159,8 @@ class SVGRenderer {
           if (layoutResult.type === 'circular') {
             const x = d[1].x;
             const y = d[1].y;
-            const angle = Math.atan2(y - centerY, x - centerX);
+            const dir = labelDirection.get(d[0]);
+            const angle = dir ? dir.angle : Math.atan2(y - centerY, x - centerX);
             const isLeft = angle > Math.PI / 2 || angle < -Math.PI / 2;
             return isLeft ? 'end' : 'start';
           }
@@ -154,9 +170,10 @@ class SVGRenderer {
           if (layoutResult.type === 'circular') {
             const x = d[1].x;
             const y = d[1].y;
-            const angle = Math.atan2(y - centerY, x - centerX);
             const offset = this.getCircularLabelOffset(isLargeTree);
-            return x + offset * Math.cos(angle);
+            const dir = labelDirection.get(d[0]);
+            const ux = dir ? dir.ux : Math.cos(Math.atan2(y - centerY, x - centerX));
+            return x + offset * ux;
           }
           return d[1].x + 8;
         })
@@ -164,9 +181,10 @@ class SVGRenderer {
           if (layoutResult.type === 'circular') {
             const x = d[1].x;
             const y = d[1].y;
-            const angle = Math.atan2(y - centerY, x - centerX);
             const offset = this.getCircularLabelOffset(isLargeTree);
-            return y + offset * Math.sin(angle);
+            const dir = labelDirection.get(d[0]);
+            const uy = dir ? dir.uy : Math.sin(Math.atan2(y - centerY, x - centerX));
+            return y + offset * uy;
           }
           return d[1].y + 3;
         })
@@ -174,10 +192,13 @@ class SVGRenderer {
           if (layoutResult.type === 'circular') {
             const x = d[1].x;
             const y = d[1].y;
-            const angle = Math.atan2(y - centerY, x - centerX);
             const offset = this.getCircularLabelOffset(isLargeTree);
-            const labelX = x + offset * Math.cos(angle);
-            const labelY = y + offset * Math.sin(angle);
+            const dir = labelDirection.get(d[0]);
+            const angle = dir ? dir.angle : Math.atan2(y - centerY, x - centerX);
+            const ux = dir ? dir.ux : Math.cos(angle);
+            const uy = dir ? dir.uy : Math.sin(angle);
+            const labelX = x + offset * ux;
+            const labelY = y + offset * uy;
             const isLeft = angle > Math.PI / 2 || angle < -Math.PI / 2;
             const rotation = (angle + (isLeft ? Math.PI : 0)) * (180 / Math.PI);
             return `rotate(${rotation}, ${labelX}, ${labelY})`;
@@ -234,6 +255,21 @@ class SVGRenderer {
     let showLabels = true;
     uiStore.subscribe(state => showLabels = state.showLabels)();
 
+    const labelDirection = new Map<string, { angle: number; ux: number; uy: number }>();
+    if (layoutResult.type === 'circular') {
+      const parentById = new Map<string, string>();
+      layoutResult.links.forEach(link => parentById.set(link.target, link.source));
+      Object.entries(layoutResult.nodes).forEach(([id, pos]) => {
+        const parentId = parentById.get(id);
+        const parentPos = parentId ? layoutResult.nodes[parentId] : null;
+        const dx = parentPos ? pos.x - parentPos.x : pos.x - centerX;
+        const dy = parentPos ? pos.y - parentPos.y : pos.y - centerY;
+        const len = Math.hypot(dx, dy) || 1;
+        const angle = Math.atan2(dy, dx);
+        labelDirection.set(id, { angle, ux: dx / len, uy: dy / len });
+      });
+    }
+
     // 只绘制叶节点的标签
     if (showLabels && layoutResult.type === 'circular') {
       const sampledLabels = this.selectCircularLabels(leafNodes, centerX, centerY, true);
@@ -249,31 +285,37 @@ class SVGRenderer {
         .attr('text-anchor', d => {
           const x = d[1].x;
           const y = d[1].y;
-          const angle = Math.atan2(y - centerY, x - centerX);
+          const dir = labelDirection.get(d[0]);
+          const angle = dir ? dir.angle : Math.atan2(y - centerY, x - centerX);
           const isLeft = angle > Math.PI / 2 || angle < -Math.PI / 2;
           return isLeft ? 'end' : 'start';
         })
         .attr('x', d => {
           const x = d[1].x;
           const y = d[1].y;
-          const angle = Math.atan2(y - centerY, x - centerX);
           const offset = this.getCircularLabelOffset(true);
-          return x + offset * Math.cos(angle);
+          const dir = labelDirection.get(d[0]);
+          const ux = dir ? dir.ux : Math.cos(Math.atan2(y - centerY, x - centerX));
+          return x + offset * ux;
         })
         .attr('y', d => {
           const x = d[1].x;
           const y = d[1].y;
-          const angle = Math.atan2(y - centerY, x - centerX);
           const offset = this.getCircularLabelOffset(true);
-          return y + offset * Math.sin(angle);
+          const dir = labelDirection.get(d[0]);
+          const uy = dir ? dir.uy : Math.sin(Math.atan2(y - centerY, x - centerX));
+          return y + offset * uy;
         })
         .attr('transform', d => {
           const x = d[1].x;
           const y = d[1].y;
-          const angle = Math.atan2(y - centerY, x - centerX);
           const offset = this.getCircularLabelOffset(true);
-          const labelX = x + offset * Math.cos(angle);
-          const labelY = y + offset * Math.sin(angle);
+          const dir = labelDirection.get(d[0]);
+          const angle = dir ? dir.angle : Math.atan2(y - centerY, x - centerX);
+          const ux = dir ? dir.ux : Math.cos(angle);
+          const uy = dir ? dir.uy : Math.sin(angle);
+          const labelX = x + offset * ux;
+          const labelY = y + offset * uy;
           const isLeft = angle > Math.PI / 2 || angle < -Math.PI / 2;
           const rotation = (angle + (isLeft ? Math.PI : 0)) * (180 / Math.PI);
           return `rotate(${rotation}, ${labelX}, ${labelY})`;
@@ -433,6 +475,21 @@ class CanvasRenderer {
       const nodeEntries = Object.entries(layoutResult.nodes);
       const labelDensity = Math.max(1, Math.floor(nodeEntries.length / 100)); // 最多显示100个标签
       
+      const labelDirection = new Map<string, { angle: number; ux: number; uy: number }>();
+      if (layoutResult.type === 'circular') {
+        const parentById = new Map<string, string>();
+        layoutResult.links.forEach(link => parentById.set(link.target, link.source));
+        nodeEntries.forEach(([nodeId, nodePos]) => {
+          const parentId = parentById.get(nodeId);
+          const parentPos = parentId ? layoutResult.nodes[parentId] : null;
+          const dx = parentPos ? nodePos.x - parentPos.x : nodePos.x - this.canvas.width / 2;
+          const dy = parentPos ? nodePos.y - parentPos.y : nodePos.y - this.canvas.height / 2;
+          const len = Math.hypot(dx, dy) || 1;
+          const angle = Math.atan2(dy, dx);
+          labelDirection.set(nodeId, { angle, ux: dx / len, uy: dy / len });
+        });
+      }
+
       nodeEntries.forEach(([id, pos], index) => {
         // 视图裁剪：只绘制视口内的标签
         if (this.isInViewport(pos) && index % labelDensity === 0) {
@@ -441,7 +498,7 @@ class CanvasRenderer {
             // 根据布局类型调整标签位置
             if (layoutResult.type === 'circular' || layoutResult.type === 'radial') {
               // 对于圆形和径向布局，标签沿圆周方向排列
-              this.drawCircularLabel(node.name, pos);
+              this.drawCircularLabel(node.name, pos, labelDirection.get(id));
             } else {
               // 对于其他布局，标签正常排列
               this.ctx.fillText(node.name, pos.x + nodeSize + 4, pos.y + nodeSize / 2);
@@ -479,7 +536,7 @@ class CanvasRenderer {
     }
   }
 
-  private drawCircularLabel(text: string, pos: { x: number; y: number }): void {
+  private drawCircularLabel(text: string, pos: { x: number; y: number }, dir?: { angle: number; ux: number; uy: number }): void {
     // 计算标签位置，使其沿圆周方向排列
     const centerX = this.canvas.width / 2;
     const centerY = this.canvas.height / 2;
@@ -487,12 +544,14 @@ class CanvasRenderer {
     // 计算到中心的向量
     const dx = pos.x - centerX;
     const dy = pos.y - centerY;
-    const angle = Math.atan2(dy, dx);
+    const angle = dir ? dir.angle : Math.atan2(dy, dx);
+    const ux = dir ? dir.ux : Math.cos(angle);
+    const uy = dir ? dir.uy : Math.sin(angle);
     
     // 计算标签位置，稍微向外偏移
     const labelOffset = 15; // 标签偏移距离
-    const labelX = pos.x + labelOffset * Math.cos(angle);
-    const labelY = pos.y + labelOffset * Math.sin(angle);
+    const labelX = pos.x + labelOffset * ux;
+    const labelY = pos.y + labelOffset * uy;
     const isLeft = angle > Math.PI / 2 || angle < -Math.PI / 2;
     const rotation = angle + (isLeft ? Math.PI : 0);
     
