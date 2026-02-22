@@ -141,60 +141,46 @@ class SVGRenderer {
           ? this.getCircularLabelFontSize(labelData.length, isLargeTree)
           : (isLargeTree ? '10px' : '12px'))
         .attr('text-anchor', d => {
-          // 对于圆形布局，根据节点位置设置文本锚点
           if (layoutResult.type === 'circular') {
             const x = d[1].x;
             const y = d[1].y;
             const angle = Math.atan2(y - centerY, x - centerX);
-            
-            // 确保文本锚点正确，使标签朝外
-            if (Math.abs(angle) > Math.PI / 2) {
-              return 'end';
-            } else {
-              return 'start';
-            }
+            const isLeft = Math.cos(angle) < 0;
+            return isLeft ? 'end' : 'start';
           }
           return 'start';
         })
         .attr('x', d => {
-          // 对于圆形布局，根据节点位置和角度设置x坐标
           if (layoutResult.type === 'circular') {
             const x = d[1].x;
             const y = d[1].y;
             const angle = Math.atan2(y - centerY, x - centerX);
-            
-            // 沿径向向外偏移，确保标签朝外，形成圆环
             const offset = this.getCircularLabelOffset(isLargeTree);
             return x + offset * Math.cos(angle);
           }
           return d[1].x + 8;
         })
         .attr('y', d => {
-          // 对于圆形布局，根据节点位置和角度设置y坐标
           if (layoutResult.type === 'circular') {
             const x = d[1].x;
             const y = d[1].y;
             const angle = Math.atan2(y - centerY, x - centerX);
-            
-            // 沿径向向外偏移，确保标签朝外，形成圆环
             const offset = this.getCircularLabelOffset(isLargeTree);
             return y + offset * Math.sin(angle);
           }
           return d[1].y + 3;
         })
         .attr('transform', d => {
-          // 对于圆形布局，根据节点角度旋转文本
           if (layoutResult.type === 'circular') {
             const x = d[1].x;
             const y = d[1].y;
             const angle = Math.atan2(y - centerY, x - centerX);
-            
-            // 径向排版（与圆环半径同向），并在左半圈翻转，保持可读性
-            let rotation = angle * (180 / Math.PI);
-            if (Math.abs(angle) > Math.PI / 2) {
-              rotation += 180;
-            }
-            return `rotate(${rotation}, ${x}, ${y})`;
+            const offset = this.getCircularLabelOffset(isLargeTree);
+            const labelX = x + offset * Math.cos(angle);
+            const labelY = y + offset * Math.sin(angle);
+            const isLeft = Math.cos(angle) < 0;
+            const rotation = (angle + (isLeft ? Math.PI : 0)) * (180 / Math.PI);
+            return `rotate(${rotation}, ${labelX}, ${labelY})`;
           }
           return '';
         })
@@ -264,12 +250,8 @@ class SVGRenderer {
           const x = d[1].x;
           const y = d[1].y;
           const angle = Math.atan2(y - centerY, x - centerX);
-          
-          if (Math.abs(angle) > Math.PI / 2) {
-            return 'end';
-          } else {
-            return 'start';
-          }
+          const isLeft = Math.cos(angle) < 0;
+          return isLeft ? 'end' : 'start';
         })
         .attr('x', d => {
           const x = d[1].x;
@@ -289,11 +271,12 @@ class SVGRenderer {
           const x = d[1].x;
           const y = d[1].y;
           const angle = Math.atan2(y - centerY, x - centerX);
-          let rotation = angle * (180 / Math.PI);
-          if (Math.abs(angle) > Math.PI / 2) {
-            rotation += 180;
-          }
-          return `rotate(${rotation}, ${x}, ${y})`;
+          const offset = this.getCircularLabelOffset(true);
+          const labelX = x + offset * Math.cos(angle);
+          const labelY = y + offset * Math.sin(angle);
+          const isLeft = Math.cos(angle) < 0;
+          const rotation = (angle + (isLeft ? Math.PI : 0)) * (180 / Math.PI);
+          return `rotate(${rotation}, ${labelX}, ${labelY})`;
         })
         .text(d => {
           const node = this.findNodeById(tree.root, d[0]);
@@ -510,31 +493,16 @@ class CanvasRenderer {
     const labelOffset = 15; // 标签偏移距离
     const labelX = pos.x + labelOffset * Math.cos(angle);
     const labelY = pos.y + labelOffset * Math.sin(angle);
+    const isLeft = Math.cos(angle) < 0;
+    const rotation = angle + (isLeft ? Math.PI : 0);
     
     // 保存当前状态
     this.ctx.save();
-    
-    // 移动到标签位置
     this.ctx.translate(labelX, labelY);
-    
-    // 旋转文本，使其与圆周切线方向一致
-    // 根据角度调整旋转方向，确保文本始终可读
-    let rotation = angle;
-    if (Math.abs(angle) > Math.PI / 2) {
-      // 左侧标签，旋转180度，使文本朝向中心
-      rotation += Math.PI;
-    }
-    
     this.ctx.rotate(rotation);
-    
-    // 设置文本对齐方式
-    this.ctx.textAlign = 'center';
+    this.ctx.textAlign = isLeft ? 'end' : 'start';
     this.ctx.textBaseline = 'middle';
-    
-    // 绘制文本
     this.ctx.fillText(text, 0, 0);
-    
-    // 恢复当前状态
     this.ctx.restore();
   }
 
