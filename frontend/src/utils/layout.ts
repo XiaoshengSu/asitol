@@ -15,19 +15,22 @@ class RectangularLayout implements LayoutAlgorithm {
 
     // 计算树的高度和宽度
     const treeHeight = this.calculateTreeHeight(tree.root);
-    const treeWidth = this.calculateTreeWidth(tree.root);
+    const treeDepth = this.calculateMaxDepth(tree.root);
 
     // 计算节点间距，根据容器大小自适应调整
     // 确保树的高度不会超出容器，同时为标签预留足够空间
-    const maxPossibleYStep = (height - 2 * padding) / Math.max(1, treeHeight);
+    const safePadding = Math.max(8, padding);
+    const rightLabelSpace = 170;
+    const availableHeight = Math.max(1, height - 2 * safePadding);
+    const availableWidth = Math.max(1, width - 2 * safePadding - rightLabelSpace);
     // 根据容器高度和树的高度自适应调整Y轴间距
     // 确保最小间距为15px，最大间距不超过50px
-    const yStep = Math.max(15, Math.min(maxPossibleYStep, 50));
+    const yStep = treeHeight > 1 ? availableHeight / (treeHeight - 1) : 0;
     // X轴间距根据容器宽度和树的宽度自适应调整
-    const xStep = (width - 2 * padding) / Math.max(1, treeWidth);
+    const xStep = treeDepth > 1 ? availableWidth / (treeDepth - 1) : 0;
 
     // 计算根节点的居中位置
-    const rootX = padding;
+    const rootX = safePadding;
     const rootY = height / 2;
 
     // 递归计算节点位置
@@ -48,10 +51,10 @@ class RectangularLayout implements LayoutAlgorithm {
     );
   }
 
-  private calculateTreeWidth(node: TreeNode): number {
+  private calculateMaxDepth(node: TreeNode): number {
     if (!node.children || node.children.length === 0) return 1;
     return 1 + node.children.reduce((max, child) =>
-      Math.max(max, this.calculateTreeWidth(child)), 0
+      Math.max(max, this.calculateMaxDepth(child)), 0
     );
   }
 

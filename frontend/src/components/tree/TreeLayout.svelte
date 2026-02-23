@@ -19,6 +19,23 @@
     nodeSize: 4,
     branchWidth: 1
   };
+  let resizeTimer: number | null = null;
+
+  const SIDEBAR_WIDTH = 256;
+  const HEADER_HEIGHT = 44;
+  const getCanvasViewport = () => {
+    if (typeof window === 'undefined') {
+      return {
+        width: layoutConfig.width || 800,
+        height: layoutConfig.height || 600
+      };
+    }
+
+    return {
+      width: Math.max(320, window.innerWidth - SIDEBAR_WIDTH),
+      height: Math.max(260, window.innerHeight - HEADER_HEIGHT)
+    };
+  };
 
   // 订阅树状态
   const unsubscribe = treeStore.subscribe($treeStore => {
@@ -39,19 +56,16 @@
     try {
       // 根据树的大小自动调整布局参数
       const nodeCount = tree.nodeCount;
-      let optimalWidth = layoutConfig.width || 800;
-      let optimalHeight = layoutConfig.height || 600;
+      const viewport = getCanvasViewport();
+      let optimalWidth = viewport.width;
+      let optimalHeight = viewport.height;
       let optimalPadding = layoutConfig.padding || 20;
       
       // 对于大规模树，调整画布大小和间距
-      if (nodeCount > 1000) {
-        optimalWidth = 1200;
-        optimalHeight = 800;
+      if (nodeCount > 5000) {
+        optimalPadding = 6;
+      } else if (nodeCount > 1000) {
         optimalPadding = 10;
-      } else if (nodeCount > 5000) {
-        optimalWidth = 1600;
-        optimalHeight = 1000;
-        optimalPadding = 5;
       }
 
       // 更新布局配置
@@ -71,8 +85,6 @@
 
       const result = algorithm.compute(params);
       treeStore.setLayoutResult(result);
-      
-      // 计算树的边界并居中
       treeStore.calculateTreeBounds();
       uiStore.resetView();
       
@@ -88,13 +100,35 @@
     }
   };
 
+  const handleResize = () => {
+    if (!tree || typeof window === 'undefined') return;
+
+    if (resizeTimer) {
+      clearTimeout(resizeTimer);
+    }
+
+    resizeTimer = window.setTimeout(() => {
+      computeLayout();
+    }, 120);
+  };
+
   onMount(() => {
     if (tree) {
       computeLayout();
     }
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', handleResize);
+    }
   });
 
   onDestroy(() => {
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('resize', handleResize);
+    }
+    if (resizeTimer) {
+      clearTimeout(resizeTimer);
+    }
     unsubscribe();
   });
 </script>
