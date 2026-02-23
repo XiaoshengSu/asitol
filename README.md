@@ -49,7 +49,7 @@ AS ITOL (Advanced Systematics Interactive Tree Of Life) 是一款功能强大的
 
 1. **克隆项目**
    ```bash
-   git clone https://github.com/yourusername/as-itol.git
+   git clone https://github.com/XiaoshengSu/asitol.git
    cd as-itol
    ```
 
@@ -58,10 +58,7 @@ AS ITOL (Advanced Systematics Interactive Tree Of Life) 是一款功能强大的
    # 前端依赖
    cd frontend
    yarn install
-   
-   # 后端依赖（如果需要）
-   cd ../backend
-   go mod download
+
    ```
 
 3. **启动开发服务器**
@@ -69,10 +66,7 @@ AS ITOL (Advanced Systematics Interactive Tree Of Life) 是一款功能强大的
    # 启动前端开发服务器
    cd frontend
    yarn dev
-   
-   # 启动后端服务器（如果需要）
-   cd ../backend
-   go run main.go
+
    ```
 
 ### 使用指南
