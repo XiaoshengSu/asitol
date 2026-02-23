@@ -22,6 +22,15 @@ const createAnnotationStore = () => {
       ...state,
       annotations: [...state.annotations, annotation]
     })),
+    upsertAnnotation: (annotation: AnnotationData) => update(state => {
+      const exists = state.annotations.some(item => item.id === annotation.id);
+      return {
+        ...state,
+        annotations: exists
+          ? state.annotations.map(item => item.id === annotation.id ? annotation : item)
+          : [...state.annotations, annotation]
+      };
+    }),
     // 添加图层
     addLayer: (layer: Layer) => update(state => ({
       ...state,
@@ -38,6 +47,10 @@ const createAnnotationStore = () => {
     removeLayer: (layerId: string) => update(state => ({
       ...state,
       layers: state.layers.filter(layer => layer.id !== layerId)
+    })),
+    removeAnnotation: (annotationId: string) => update(state => ({
+      ...state,
+      annotations: state.annotations.filter(annotation => annotation.id !== annotationId)
     })),
     // 调整图层顺序
     reorderLayers: (layerId: string, newOrder: number) => update(state => {

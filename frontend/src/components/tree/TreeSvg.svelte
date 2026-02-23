@@ -2,6 +2,7 @@
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import { treeStore } from '../../stores/treeStore';
   import { uiStore } from '../../stores/uiStore';
+  import { annotationStore } from '../../stores/annotationStore';
   import { createRenderer } from '../../utils/renderer';
   import type { Tree, LayoutResult } from '../../types/tree';
   import type { RenderConfig } from '../../types/layout';
@@ -40,6 +41,12 @@
     branchColor = $uiStore.branchColor;
     branchColorMode = $uiStore.branchColorMode;
     // 当showLabels或branchColor变化时重新渲染树
+    if (renderer && tree && layoutResult) {
+      render();
+    }
+  });
+
+  const unsubscribeAnnotation = annotationStore.subscribe(() => {
     if (renderer && tree && layoutResult) {
       render();
     }
@@ -178,6 +185,7 @@
     }
     unsubscribeTree();
     unsubscribeUI();
+    unsubscribeAnnotation();
   });
 </script>
 
