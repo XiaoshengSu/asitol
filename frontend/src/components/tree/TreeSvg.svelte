@@ -86,7 +86,6 @@
     updateTransform();
     
     // 渲染完成后，根据 uiStore 中的选中状态重新应用高亮效果
-    applySelectedState();
   };
   
   // 应用选中状态高亮

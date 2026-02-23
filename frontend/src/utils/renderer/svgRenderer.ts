@@ -32,6 +32,28 @@ export class SVGRenderer {
     }, 50);
   }
 
+  private getSelectedNodeSet(): Set<string> {
+    if (typeof uiStore === 'undefined') {
+      return new Set<string>();
+    }
+
+    let selectedNodes: string[] = [];
+    uiStore.subscribe(state => {
+      selectedNodes = state.selectedNodes;
+    })();
+
+    return new Set(selectedNodes);
+  }
+
+  private applySelectedNodeStyles(baseRadius: number): void {
+    const selectedNodeSet = this.getSelectedNodeSet();
+
+    this.g.selectAll<SVGCircleElement, [string, { x: number; y: number }]>('.node')
+      .attr('stroke', (d: [string, { x: number; y: number }]) => selectedNodeSet.has(d[0]) ? '#ff4d4f' : 'transparent')
+      .attr('stroke-width', (d: [string, { x: number; y: number }]) => selectedNodeSet.has(d[0]) ? 3 : 2)
+      .attr('r', (d: [string, { x: number; y: number }]) => selectedNodeSet.has(d[0]) ? baseRadius * 1.45 : baseRadius);
+  }
+
   private doRender(tree: Tree, layoutResult: LayoutResult, config: RenderConfig): void {
     this.g.selectAll('*').remove();
 
@@ -166,6 +188,7 @@ export class SVGRenderer {
       .enter()
       .append('circle')
       .attr('class', 'node')
+      .attr('data-node-id', d => d[0])
       .attr('cx', d => d[1].x)
       .attr('cy', d => d[1].y)
       .attr('r', nodeSize)
@@ -222,9 +245,7 @@ export class SVGRenderer {
         d3.selectAll('.tree-tooltip').remove();
         
         // 恢复节点原始样式
-        d3.select(event.currentTarget)
-          .attr('stroke', 'transparent')
-          .attr('r', nodeSize);
+        this.applySelectedNodeStyles(nodeSize);
       })
       .on('click', (event, d) => {
         // 以选中节点为中心放大
@@ -232,21 +253,15 @@ export class SVGRenderer {
         this.zoomToNode(d[0], layoutResult, config);
         
         // 高亮选中的节点
-        d3.selectAll('.node')
-          .attr('stroke', 'transparent')
-          .attr('r', nodeSize);
-        d3.select(event.currentTarget)
-          .attr('stroke', '#ff0000')
-          .attr('r', nodeSize * 1.3);
+        this.applySelectedNodeStyles(nodeSize);
         
         // 更新uiStore中的选中状态
-        if (typeof uiStore !== 'undefined') {
-          uiStore.selectNode(d[0]);
-        }
-        
+
         // 阻止事件冒泡，确保选中状态不被其他事件覆盖
         event.preventDefault();
       });
+
+    this.applySelectedNodeStyles(nodeSize);
     
     // 添加点击空白处重置缩放的功能
     this.g.append('rect')
@@ -368,6 +383,7 @@ export class SVGRenderer {
         }
       }, 50);
     }
+
   }
 
   private renderLargeTree(
@@ -451,6 +467,7 @@ export class SVGRenderer {
       .enter()
       .append('circle')
       .attr('class', 'node')
+      .attr('data-node-id', d => d[0])
       .attr('cx', d => d[1].x)
       .attr('cy', d => d[1].y)
       .attr('r', largeNodeSize)
@@ -507,9 +524,7 @@ export class SVGRenderer {
         d3.selectAll('.tree-tooltip').remove();
         
         // 恢复节点原始样式
-        d3.select(event.currentTarget)
-          .attr('stroke', 'transparent')
-          .attr('r', largeNodeSize);
+        this.applySelectedNodeStyles(largeNodeSize);
       })
       .on('click', (event, d) => {
         // 以选中节点为中心放大
@@ -517,18 +532,10 @@ export class SVGRenderer {
         this.zoomToNode(d[0], layoutResult, config);
         
         // 高亮选中的节点
-        d3.selectAll('.node')
-          .attr('stroke', 'transparent')
-          .attr('r', largeNodeSize);
-        d3.select(event.currentTarget)
-          .attr('stroke', '#ff0000')
-          .attr('r', largeNodeSize * 1.3);
+        this.applySelectedNodeStyles(largeNodeSize);
         
         // 更新uiStore中的选中状态
-        if (typeof uiStore !== 'undefined') {
-          uiStore.selectNode(d[0]);
-        }
-        
+
         // 阻止事件冒泡，确保选中状态不被其他事件覆盖
         event.preventDefault();
       });
@@ -625,6 +632,8 @@ export class SVGRenderer {
           return node?.name || '';
         });
     }
+
+    this.applySelectedNodeStyles(largeNodeSize);
   }
 
   private selectCircularLabels(
