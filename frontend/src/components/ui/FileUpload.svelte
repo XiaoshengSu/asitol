@@ -52,6 +52,8 @@
   let uploadType: 'tree' | 'annotation' = 'tree';
   let annotationType: AnnotationType = 'COLORSTRIP';
   let exampleTreeMode = false;
+  let fileInputEl: HTMLInputElement | null = null;
+  let acceptedFileTypes = '.nwk,.newick,.txt';
 
   const getLayerSnapshot = () => {
     let layers: any[] = [];
@@ -196,6 +198,18 @@
     upsertExampleAnnotationLayer(annotationType);
   }
 
+  $: acceptedFileTypes = uploadType === 'tree' ? '.nwk,.newick,.txt' : '.json,.txt';
+
+  const switchUploadType = (type: 'tree' | 'annotation') => {
+    uploadType = type;
+    file = null;
+    error = null;
+  };
+
+  const triggerFileSelect = () => {
+    fileInputEl?.click();
+  };
+
   const handleFileChange = async (e: Event) => {
     const target = e.target as HTMLInputElement;
     if (!target.files || target.files.length === 0) return;
@@ -263,69 +277,76 @@
   };
 </script>
 
-<div class="bg-gray-800 p-3 rounded-lg shadow-md">
-  <h3 class="text-sm font-medium text-gray-300 mb-3">文件上传</h3>
-
-  <div class="mb-3">
-    <div class="flex gap-2">
-      <button
-        class={`text-xs py-1 px-3 rounded ${uploadType === 'tree' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
-        on:click={() => uploadType = 'tree'}
-      >
-        树文件
-      </button>
-      <button
-        class={`text-xs py-1 px-3 rounded ${uploadType === 'annotation' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
-        on:click={() => uploadType = 'annotation'}
-      >
-        注释文件
-      </button>
-    </div>
+<div class="bg-gray-800 p-3 rounded-lg shadow-md space-y-3">
+  <div class="flex items-center justify-between">
+    <h3 class="text-sm font-medium text-gray-300">导入数据</h3>
+    <span class="text-[10px] text-gray-400">{uploadType === 'tree' ? 'Newick' : 'JSON'}</span>
   </div>
 
-  <div class="mb-3">
-    <!-- svelte-ignore a11y_label_has_associated_control -->
-    <label class="block text-xs text-gray-400 mb-1">
-      {uploadType === 'tree' ? '示例注释类型（实时生效）' : '注释类型'}
-    </label>
+  <div class="grid grid-cols-2 gap-2 rounded bg-gray-900 p-1">
+    <button
+      class={`text-xs py-1.5 rounded ${uploadType === 'tree' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
+      on:click={() => switchUploadType('tree')}
+    >
+      树文件
+    </button>
+    <button
+      class={`text-xs py-1.5 rounded ${uploadType === 'annotation' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
+      on:click={() => switchUploadType('annotation')}
+    >
+      注释文件
+    </button>
+  </div>
+
+  <div class="flex gap-2">
+    <button
+      class="flex-1 text-xs bg-blue-600 hover:bg-blue-500 text-white py-2 rounded disabled:opacity-50"
+      on:click={triggerFileSelect}
+      disabled={loading}
+    >
+      {loading ? '读取中...' : (uploadType === 'tree' ? '上传树文件' : '上传注释文件')}
+    </button>
+
+    {#if uploadType === 'tree'}
+      <button
+        class="text-xs bg-gray-700 hover:bg-gray-600 text-white py-2 px-3 rounded disabled:opacity-50 whitespace-nowrap"
+        on:click={loadExampleTree}
+        disabled={loading}
+      >
+        示例
+      </button>
+    {/if}
+  </div>
+
+  <input
+    bind:this={fileInputEl}
+    type="file"
+    accept={acceptedFileTypes}
+    class="hidden"
+    on:change={handleFileChange}
+  />
+
+  <div class="text-[11px] text-gray-400 space-y-1">
+    <div>{uploadType === 'tree' ? '支持 .nwk / .newick / .txt' : '支持 .json / .txt'}</div>
+    {#if file}
+      <div class="text-gray-300 truncate">当前文件: {file.name}</div>
+    {/if}
+    {#if error}
+      <div class="text-red-400">{error}</div>
+    {/if}
+  </div>
+
+  <div class="flex items-center gap-2">
+    <span class="text-[11px] text-gray-400 whitespace-nowrap">
+      {uploadType === 'tree' ? '示例注释' : '注释类型'}
+    </span>
     <select
-      class="w-full text-xs bg-gray-700 text-gray-300 rounded p-1"
+      class="flex-1 text-xs bg-gray-700 text-gray-300 rounded p-1.5"
       bind:value={annotationType}
     >
       {#each ANNOTATION_OPTIONS as option}
         <option value={option.value}>{option.label}</option>
       {/each}
     </select>
-  </div>
-
-  <div class="mb-3">
-    <!-- svelte-ignore a11y_label_has_associated_control -->
-    <label class="block text-xs text-gray-400 mb-1">
-      {uploadType === 'tree' ? '选择树文件 (Newick)' : '选择注释文件 (JSON)'}
-    </label>
-    <input
-      type="file"
-      class="w-full text-xs text-gray-300 file:mr-2 file:py-1 file:px-3 file:border-0 file:bg-gray-700 file:text-gray-300"
-      on:change={handleFileChange}
-    />
-    {#if file}
-      <p class="text-xs text-gray-400 mt-1">{file.name}{loading ? ' - 读取中...' : ''}</p>
-    {/if}
-  </div>
-
-  {#if error}
-    <p class="text-xs text-red-400 mb-3">{error}</p>
-  {/if}
-
-  <div class="flex gap-2">
-    {#if uploadType === 'tree'}
-      <button
-        class="flex-1 text-xs bg-gray-700 hover:bg-gray-600 text-white py-1 px-2 rounded disabled:opacity-50"
-        on:click={loadExampleTree}
-        disabled={loading}
-      >
-        加载示例树+注释
-      </button>
-    {/if}
   </div>
 </div>
