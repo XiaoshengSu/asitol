@@ -13,6 +13,9 @@ const createUIStore = () => {
     pan: { x: number; y: number };
     selectedNodes: string[];
     searchQuery: string;
+    annotationOnlySelected: boolean;
+    annotationRowsPerPage: number;
+    annotationPage: number;
     showLabels: boolean;
     branchColor: string;
     branchColorMode: 'single' | 'clade';
@@ -25,6 +28,9 @@ const createUIStore = () => {
     pan: { x: 0, y: 0 },
     selectedNodes: [],
     searchQuery: '',
+    annotationOnlySelected: false,
+    annotationRowsPerPage: 80,
+    annotationPage: 1,
     showLabels: true,
     branchColor: '#8f96a3',
     branchColorMode: 'clade'
@@ -158,7 +164,33 @@ const createUIStore = () => {
     // 清空选择
     clearSelection: () => update(state => ({ ...state, selectedNodes: [] })),
     // 设置搜索查询
-    setSearchQuery: (query: string) => update(state => ({ ...state, searchQuery: query })),
+    setSearchQuery: (query: string) => update(state => ({
+      ...state,
+      searchQuery: query,
+      annotationPage: 1
+    })),
+    setAnnotationOnlySelected: (onlySelected: boolean) => update(state => ({
+      ...state,
+      annotationOnlySelected: onlySelected,
+      annotationPage: 1
+    })),
+    setAnnotationRowsPerPage: (rowsPerPage: number) => update(state => ({
+      ...state,
+      annotationRowsPerPage: Math.max(10, Math.floor(rowsPerPage)),
+      annotationPage: 1
+    })),
+    setAnnotationPage: (page: number) => update(state => ({
+      ...state,
+      annotationPage: Math.max(1, Math.floor(page))
+    })),
+    nextAnnotationPage: () => update(state => ({
+      ...state,
+      annotationPage: state.annotationPage + 1
+    })),
+    prevAnnotationPage: () => update(state => ({
+      ...state,
+      annotationPage: Math.max(1, state.annotationPage - 1)
+    })),
     // 切换标签显示
     toggleLabels: () => update(state => ({ ...state, showLabels: !state.showLabels })),
     // 设置标签显示状态
@@ -177,6 +209,9 @@ const createUIStore = () => {
       pan: { x: 0, y: 0 },
       selectedNodes: [],
       searchQuery: '',
+      annotationOnlySelected: false,
+      annotationRowsPerPage: 80,
+      annotationPage: 1,
       showLabels: true,
       branchColor: '#8f96a3',
       branchColorMode: 'clade'
