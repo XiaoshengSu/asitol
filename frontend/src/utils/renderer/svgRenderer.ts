@@ -742,41 +742,43 @@ export class SVGRenderer {
     labels: Array<[string, { x: number; y: number }]>,
     isLargeTree: boolean
   ): Array<[string, { x: number; y: number }]> {
-    // 闁诲海鏁婚埀顒佺〒閼规儳顭块崼鍡楀暟閳ь剛鍏樺浠嬪箣椤栨粎顦梻浣瑰絻濞层劑寮妶澶婂珘闁逞屽墮閳规垿鍩€椤掍焦浜ゆ繛鎴炵閻ｉ亶鏌″鍛窛妞ゆ帞鍏樺浠嬪箛椤掆偓閻撴垹绱掑☉娆戝⒈闁?
-    if (labels.length > 100) {
-      // 闂佸憡鐟禍娆戞崲濮樿埖鍋╂繛鍡樺灥椤?0婵炴垶鎼╂禍婵嬫偉閿濆洨椹抽柟鎯ф噽缁€澶岀棯椤撗冩灆缂佺粯宀稿畷锝夘敍濠垫劕娈洪梺?
-      const maxLabels = 40;
-      const step = Math.ceil(labels.length / maxLabels);
-      return labels.filter((_, index) => index % step === 0);
-    } else if (labels.length > 60) {
-      // 婵炴垶鎼╅崢濂告倵閻戣棄鍐€闁规惌鍨崇粈澶娗庨崶銊х畼闁哄棌鍋撶紓?0婵炴垶鎼╂禍婵嬫偉閿濆洨椹?
-      const maxLabels = 50;
-      const step = Math.ceil(labels.length / maxLabels);
-      return labels.filter((_, index) => index % step === 0);
-    } else if (labels.length > 30) {
-      // 闁诲繐绻愮换鎰版倵閻戣棄鍐€闁规惌鍨崇粈澶娗庨崶銊х畼闁哄棌鍋撶紓?0婵炴垶鎼╂禍婵嬫偉閿濆洨椹?
-      const maxLabels = 60;
-      const step = Math.ceil(labels.length / maxLabels);
-      return labels.filter((_, index) => index % step === 0);
-    }
-    
-    // 闂?Y 闂佺鍕闁绘牭缍侀獮鎺楀箳閹寸姷顣查梺鍝勭Т濞层劑顢?
+    if (labels.length <= 1) return labels;
+
+    // Always optimize in Y order for deterministic output.
     const sortedLabels = [...labels].sort((a, b) => a[1].y - b[1].y);
-    
-    // 闂備焦褰冨ú锕傛偋闁秴鍐€闁搞儮鏅╅崝顕€鏌ㄥ☉妯肩伇闁炽儲蓱缁屽崬鈹戦崱娆屽亾椤撱垺鍎庨悗娑櫳戦悡娆撴煕濮橆厼鐏ｇ紒妤€鍊垮鍨緞鎼粹€虫灆婵犮垹澧庨崰鏍涚捄銊﹀磯?
+    const selectedNodeSet = this.getSelectedNodeSet();
+
+    const gaps: number[] = [];
+    for (let i = 1; i < sortedLabels.length; i += 1) {
+      gaps.push(sortedLabels[i][1].y - sortedLabels[i - 1][1].y);
+    }
+
+    // If vertical density is low enough, keep all labels.
+    const medianGap = this.median(gaps);
+    const fontSizePx = isLargeTree ? 8 : 10;
+    const requiredSpacing = Math.max(6, fontSizePx * 0.9);
+    if (medianGap >= requiredSpacing) {
+      return sortedLabels;
+    }
+
+    // Dense labels: keep by spacing, but always keep first/last/selected.
+    const mustKeep = new Set<string>([
+      sortedLabels[0][0],
+      sortedLabels[sortedLabels.length - 1][0],
+      ...selectedNodeSet
+    ]);
+
     const optimizedLabels: Array<[string, { x: number; y: number }]> = [];
-    // 婵犮垹鐖㈤崘顏嗘毌婵犫拃鍛粶濠殿喚鍋ゅ鐢稿焵椤掑倷鐒婇煫鍥ㄦ尵閳ь剦鍙冮幆鍕箻椤旀枻绱甸柣鐘靛劋缁绘劗妲愬┑鍫熷厹妞ゆ棁宕电粻浠嬫煛瀹ュ懏宸濇い鎺楁敱缁嬪顓兼径濠冾仧闂?
-    const minYSpacing = isLargeTree ? 20 : 25;
     let lastY = -Infinity;
-    
     for (const label of sortedLabels) {
+      const id = label[0];
       const y = label[1].y;
-      if (y - lastY >= minYSpacing) {
+      if (mustKeep.has(id) || y - lastY >= requiredSpacing) {
         optimizedLabels.push(label);
         lastY = y;
       }
     }
-    
+
     return optimizedLabels;
   }
 
