@@ -62,6 +62,7 @@
       nodeColor: '#fff',
       branchColor,
       branchColorMode,
+      annotationDisplayMode: 'legend',
       nodeSize: 4,
       branchWidth: 1
     };
@@ -85,6 +86,7 @@
       nodeColor: '#fff',
       branchColor,
       branchColorMode,
+      annotationDisplayMode: 'legend',
       nodeSize: 4,
       branchWidth: 1
     };

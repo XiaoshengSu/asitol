@@ -5,6 +5,7 @@
   import TreeCanvas from '../../components/tree/TreeCanvas.svelte';
   import TreeControls from '../../components/tree/TreeControls.svelte';
   import LayerManager from '../../components/annotation/LayerManager.svelte';
+  import AnnotationLegendLayer from '../../components/annotation/AnnotationLegendLayer.svelte';
   import FileUpload from '../../components/ui/FileUpload.svelte';
   import ExportDialog from '../../components/ui/ExportDialog.svelte';
   import { uiStore } from '../../stores/uiStore';
@@ -92,6 +93,7 @@
       {:else}
         <TreeCanvas />
       {/if}
+      <AnnotationLegendLayer />
     </section>
 
     <!-- 移除右侧边栏 -->

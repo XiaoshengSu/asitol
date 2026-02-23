@@ -75,22 +75,22 @@ export class SVGRenderer {
     const nodeSize = isLargeTree ? Math.max(1, (config.nodeSize || 4) * 0.6) : (config.nodeSize || 4);
     const baseBranchWidth = isLargeTree ? Math.max(0.5, (config.branchWidth || 1) * 0.8) : (config.branchWidth || 1);
     
-    // 璁＄畻姣忎釜鑺傜偣鐨勬繁搴﹀眰绾?
+    // 闁荤姳绶ょ槐鏇㈡偩鐠囨畫鎺曠疀鎼淬劌娈濋梺鐓庢惈閸婂宕戦敐澶嬪剭闁告洦鍓涚粻鎺楀箹鏉堝墽鐣遍柣顏呭閻?
     const nodeDepth = new Map<string, number>();
     const maxDepth = this.calculateNodeDepths(tree.root, 0, nodeDepth);
     const depthRange = Math.max(1, maxDepth);
     
-    // 璋冭瘯锛氭鏌?nodeDepth 鏄犲皠鏄惁姝ｇ‘濉厖
+    // 闁荤姴顑呴崯鎶芥儊椤栫偞鏅慨姗嗗弾濮婇箖鏌?nodeDepth 闂佸搫瀚慨鎾儍閻樿鍙婃い鏍ㄧ閸庡﹥鎱ㄥ┑鎾舵偧闁炽儲蓱缁诲懘顢曢姀鐘茬
 
     if (nodeCount > 1000) {
       this.renderLargeTree(tree, layoutResult, config, centerX, centerY, nodeSize, baseBranchWidth, cladeColorMap, nodeDepth, maxDepth);
       return;
     }
 
-    // 璁＄畻鎵€鏈夊竷灞€鐨勫彾鑺傜偣
+    // 闁荤姳绶ょ槐鏇㈡偩婵犳艾绠ラ柍褜鍓熷鍨緞婵犲嫷浼岄柣蹇曞亹閸嬫捇鏌ｉ妸銉ヮ仼鐟滀即绠栭幊鐐哄磼濠婂啩鍖?
     const leafNodeIds = new Set(Object.keys(layoutResult.nodes).filter(id => isLeafNode(tree.root, id)));
     
-    // 涓哄渾褰㈠拰寰勫悜甯冨眬璁＄畻鍙惰妭鐐?
+    // 婵炴垶鎸搁幖顐€掗幑鎰╀汗闁靛繒濮电€氳尙鈧灚婢樼€氼剟骞冨鍛殰闁告劑鍔庡﹢浼存偣娓氬﹦纾块柣锝咁煼瀹曪綁骞嗛弶璇炬繈鏌?
     const circularLeafIds = (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted')
       ? leafNodeIds
       : new Set<string>();
@@ -103,13 +103,13 @@ export class SVGRenderer {
         const parentId = parentById.get(id);
         const parentPos = parentId ? layoutResult.nodes[parentId] : null;
         if (parentPos) {
-          // 鏈夌埗鑺傜偣鏃讹紝鍩轰簬鐖惰妭鐐规柟鍚?
+          // 闂佸搫鐗嗛ˇ閬嶅春濡ゅ懏鍤嶉柛灞剧矊娴狀垶鏌￠崘顓у晣缂佽鲸绻堝畷鐑樻姜閹殿喛澹橀梺缁樼墬閸庡吋淇婇銏″€烽悷娆忓閻撴瑩鏌?
           const dx = pos.x - parentPos.x;
           const dy = pos.y - parentPos.y;
           const len = Math.hypot(dx, dy) || 1;
           labelDirection.set(id, { angle: Math.atan2(dy, dx), ux: dx / len, uy: dy / len });
         } else {
-          // 鏃犵埗鑺傜偣鏃讹紙鏍硅妭鐐癸級锛屽熀浜庝腑蹇冩柟鍚?
+          // 闂佸搫鍟版慨鐑藉春濡ゅ懏鍤嶉柛灞剧矊娴狀垶鏌￠崘顓у晣缂佽鲸鐟╁鐣屾兜閸涱厙婵嬫煟閹邦喗顏熺紒杈ㄥ哺閺佸秶浠﹂悾灞芥暏婵炲瓨绮岀花濂告嚈閹达絿鐤€闁告劏鏅滈悡娆撴煕?
           const dx = pos.x - centerX;
           const dy = pos.y - centerY;
           const len = Math.hypot(dx, dy) || 1;
@@ -128,32 +128,32 @@ export class SVGRenderer {
         const target = layoutResult.nodes[d.target];
 
         if (layoutResult.type === 'rectangular') {
-          // 鎸夌収鍙傝€冩晥鏋滃浘鐨勬柟寮忕粯鍒剁煩褰㈡爲鏍戞灊
-          // 鎵€鏈夋爲鏋濋兘鏄洿瑙掑垎鍙夛紝姘村钩绾挎鏈濆彸
+          // 闂佸湱顭堥ˇ閬嶅矗鎼淬劌鐭楅柛灞剧妇閸嬫捇宕橀埡鍌涚彙闂佸搫顑嗙划灞矫瑰鈧幆鍐礋椤掍胶鍘甸悗娈垮枛缁绘帞鍒掗鐐茬闁告挷鑳堕崣鎰喐閼割剙鐏柣鏍ㄧ叀瀵粙骞嬮悙鍏稿枈
+          // 闂佸湱顣介崑鎾绘煛閸繍妲归柣鏍ㄧ叀瀵鈹戠€ｎ亜骞嬮梺鍝勫閸ㄥ啿煤鐠恒劍鍠嗛柟鐑樺灥閻庡鏌涘▎蹇ｆ缂佽鲸绻傞～婵嬪级閹达附灏欑紓浣哄亾鐎笛囶敊瀹€鍕珘婵犻潧妫楃粈?
           
-          // 妫€鏌ョ洰鏍囪妭鐐规槸鍚︿负鍙惰妭鐐?
+          // 濠碘槅鍋€閸嬫捇鏌＄仦璇插姢婵炶弓鍗冲浠嬪炊椤忓嫀婵嬫煟閹邦垼娼愭俊鍙夋倐瀹曘儵鏁傞懗顖滎槹闂佸憡鐟﹂崕鍏间繆椤撱垺鍊?
           const isTargetLeaf = !findNodeById(tree.root, d.target)?.children || findNodeById(tree.root, d.target)?.children.length === 0;
           
           if (isTargetLeaf) {
-            // 瀵逛簬鍙惰妭鐐癸紝纭繚鏈変竴涓按骞冲悜鍙崇殑绾挎
-            // 璁＄畻姘村钩绾挎鐨勭粓鐐箈鍧愭爣锛岀‘淇濇湞鍙?
-            const horizontalEndX = Math.max(source.x, target.x) + 18; // 杞婚噺鍙冲欢锛岄伩鍏嶇煩褰㈡爲鏁翠綋澶栨孩
+            // 闁诲海鏁婚埀顒佺〒閼归箖鏌涘▎鎰姸濠碘槅鍙冮幃娆撴儌閸濄儳顦紒缁㈠弾閸犳洜鎹㈠璺哄珘濠㈣泛顦遍鍗炩槈閹垮啩绨奸柟绋款樀閻涱噣宕橀崣澶娾偓濠氭煕濞嗗繒锛嶆繛鍫熷灩閻ヮ亪骞愭惔顔兼杸
+            // 闁荤姳绶ょ槐鏇㈡偩鐠囧樊娼╅柡澶嬪灴閹割剛绱掗悙顒€顕滄い鏂跨焸閹啴宕熼鐘电厜闂佺粯鍔楅悾褔鏌涜閸旀牠鎮ラ敐澶嬫櫖鐎光偓閳ь剟鍨惧Ο鑽も攳婵犻潧娲︾弧鍌炴煕?
+            const horizontalEndX = Math.max(source.x, target.x) + 18;
             return `M ${source.x} ${source.y} L ${target.x} ${source.y} L ${target.x} ${target.y} L ${horizontalEndX} ${target.y}`;
           } else {
-            // 瀵逛簬闈炲彾鑺傜偣锛屼娇鐢ㄦ甯哥殑鐩磋鍒嗗弶
+            // 闁诲海鏁婚埀顒佺〒閼归箖姊婚崼銏犱粶鐟滀即绠栭幊鐐哄磼濠婂啩鍖栭梺鎸庣☉婵傛梹绻涢崶顒佸仺闁靛瀵岄崝鈧柣銏╁灠閹芥粌鈻撻幋锔藉剮缁炬儳顑愬锟犳煕閹烘垶顥滅€?
             return `M ${source.x} ${source.y} L ${target.x} ${source.y} L ${target.x} ${target.y}`;
           }
         }
 
         if (layoutResult.type === 'circular') {
-          // 瀵逛簬鍦嗗舰甯冨眬锛屼娇鐢ㄧ煩褰㈠垎鍙?
+          // 闁诲海鏁婚埀顒佺〒閼归箖鏌涢敃鈧Λ妤呮嚋閹殿喗鏆滈柛鎰╁妿濠€浼存煥濞戞ê顨欏┑鐐叉喘閹粙濡歌閸欐劗鎲搁懜顒€鐏╅柛銊ラ叄瀹?
           const midX = (source.x + target.x) / 2;
           const midY = (source.y + target.y) / 2;
           return `M ${source.x} ${source.y} L ${midX} ${source.y} L ${midX} ${target.y} L ${target.x} ${target.y}`;
         }
         
         if (layoutResult.type === 'radial' || layoutResult.type === 'unrooted') {
-          // 瀵逛簬寰勫悜鍜屾棤鏍瑰竷灞€锛屼娇鐢ㄧ洿绾垮垎鏀?
+          // 闁诲海鏁婚埀顒佺〒閼瑰墽鈧灚婢樼€氼剟骞冨鍫濇そ閻忕偟鍋撻敓銉╂煛瀹ュ洦鍤€缂佹棃顥撴禒锕傚焵椤掑嫭鏅悘鐐靛帶閳诲繘鏌ｉ～顒€濡挎繛鑼舵硶閻ヮ亪宕归鑲┾偓濠氭煛閳?
           return `M ${source.x} ${source.y} L ${target.x} ${target.y}`;
         }
 
@@ -167,10 +167,10 @@ export class SVGRenderer {
         return ensureContrast(config.branchColor || '#888');
       })
       .attr('stroke-width', d => {
-        // 鍩轰簬鐩爣鑺傜偣娣卞害璁＄畻鏍戞灊瀹藉害锛屾牴鑺傜偣鏈€绮楋紝鍙惰妭鐐规渶缁?
+        // 闂佺硶鏅炲銊ц姳椤掑嫭鍎庢い鏃傛櫕閸ㄥジ鏌ら崫鍕偓濠氬磻閿濆惓搴ㄥ础閻愬樊鍞洪柣鐘辩筏缁辨洟鎮炬繝姘唨闁瑰鍋熸禍浼存倵绾懏顥夐悗瑙勫▕閺佸秶浠﹂崜褍顥戦梺鐓庢惈閸婂宕戦敐澶婂珘闁逞屽墰閸掓帒螖鐎ｎ剛顦梺鍛婄懄閸庡吋淇婇銏″€烽悷娆忓娴犳绱?
         const targetDepth = nodeDepth.get(d.target) || 0;
         const widthRatio = 1 - (targetDepth / depthRange);
-        // 浣跨敤鏇存槑鏄剧殑瀹藉害鍙樺寲鑼冨洿
+        // 婵炶揪缍€濞夋洟寮妶澶婂嵆閻庢稒蓱椤牠鏌￠崟顐⑩挃婵炲牊鍨归埀顒傤攰濡嫮鈧濞婂畷锝呂熼崫鍕靛殭闂佽偐鍘ч崯顐⒚?
         const minWidth = baseBranchWidth * 0.5;
         const maxWidth = baseBranchWidth * 2;
         return Math.max(minWidth, minWidth + (maxWidth - minWidth) * widthRatio);
@@ -185,7 +185,7 @@ export class SVGRenderer {
       ? allNodes.filter(([id]) => !isLeafNode(tree.root, id))
       : allNodes;
 
-    // 涓烘瘡涓妭鐐规坊鍔犻€変腑鐘舵€?
+    // 婵炴垶鎸鹃崕銈夋儊閳╁啰鈻旀い蹇撴搐铻￠梺缁樺姌椤宕告繝鍥х闁绘鍎甸崑鎾村緞婢跺骸骞€闂佺粯顭堥崺鏍焵?
     this.g.selectAll('.node')
       .data(nodeData)
       .enter()
@@ -200,10 +200,10 @@ export class SVGRenderer {
       .attr('stroke-width', 2)
       .attr('cursor', 'pointer')
       .on('mouseover', (event, d) => {
-        // 鍏堢Щ闄ゅ彲鑳藉瓨鍦ㄧ殑鏃ooltip
+        // 闂佺绻愰悧蹇庣昂闂傚倸瀚ㄩ崐鏇°亹閺屻儲鍤勯柦妯侯槺閹界娀鏌涢敂鍝勫婵炲牊鍨垮顕€鈥旂花鍗璴tip
         d3.selectAll('.tree-tooltip').remove();
         
-        // 鍒涘缓宸ュ叿鎻愮ず鍏冪礌
+        // 闂佸憡甯楃粙鎴犵磽閹炬剚鍟呴柕澶堝劚瀵版棃鏌熺紒妯哄闁靛洦宀稿畷妤呭礃椤忓棭妲?
         const tooltip = d3.select('body')
           .append('div')
           .attr('class', 'tree-tooltip')
@@ -218,55 +218,55 @@ export class SVGRenderer {
           .style('left', (event.pageX + 10) + 'px')
           .style('top', (event.pageY + 10) + 'px');
         
-        // 鑾峰彇鑺傜偣淇℃伅
+        // 闂佸吋鍎抽崲鑼躲亹閸ヮ剚鍤嶉柛灞剧矊娴狀垰菐閸ワ絽澧插ù?
         const node = findNodeById(tree.root, d[0]);
         if (node) {
           const tooltipContent = `
-            <div><strong>鑺傜偣鍚嶇О:</strong> ${node.name || 'Unnamed'}</div>
-            <div><strong>鑺傜偣ID:</strong> ${node.id}</div>
-            ${node.children && node.children.length > 0 ? `<div><strong>瀛愯妭鐐规暟:</strong> ${node.children.length}</div>` : ''}
-            ${node.length ? `<div><strong>鍒嗘敮闀垮害:</strong> ${node.length}</div>` : ''}
-            <div><small>鐐瑰嚮鑺傜偣浠ヨ鑺傜偣涓轰腑蹇冩斁澶?/small></div>
-            <div><small>鐐瑰嚮绌虹櫧澶勯噸缃缉鏀?/small></div>
+            <div><strong>闂佺厧鎼崐濠氬磻閿濆瑙︾€广儱娉?</strong> ${node.name || 'Unnamed'}</div>
+            <div><strong>闂佺厧鎼崐濠氬磻椤ゅ粚:</strong> ${node.id}</div>
+            ${node.children && node.children.length > 0 ? `<div><strong>闁诲孩绋掗崝妯讳繆椤撱垺鍊烽悷娆忓濞?</strong> ${node.children.length}</div>` : ''}
+            ${node.length ? `<div><strong>闂佸憡甯掑Λ娆撳极椤曗偓濮婂綊宕归纰卞敽:</strong> ${node.length}</div>` : ''}
+            <div><small>闂佺粯鍔楅幊鎾诲吹椤曗偓閹崇偤宕掑鍐у寲婵炲濮伴崕鎾敋濮樿埖鍤嶉柛灞剧矊娴狀垰鈽夐幘瑙勩€冮柤鍨灱缁犳盯宕橀埡鍌涙緬婵?/small></div>
+            <div><small>闂佺粯鍔楅幊鎾诲吹椤斿墽鐭氶柧蹇氼潐椤忋倕顭跨捄鍝勵伃闁革絽鎽滅槐鏃堫敊閸撗呯闂佽　鍋?/small></div>
           `;
           tooltip.html(tooltipContent);
         }
         
-        // 榧犳爣鎮仠鏃堕珮浜妭鐐?
+        // 婵崿鍛ｉ柣鏍电秮楠炲啴顢楅埀顒佺閻樿绫嶉柛顐ｆ礈瑜邦垰霉濠婂骸鏋﹀┑鈽嗗弮閹?
         d3.select(event.currentTarget)
           .attr('stroke', '#ffcc00')
           .attr('r', nodeSize * 1.5);
       })
       .on('mousemove', (event) => {
-        // 鏇存柊宸ュ叿鎻愮ず浣嶇疆
+        // 闂佸搫娲ら悺銊╁蓟婵犲偆鍟呴柕澶堝劚瀵版棃鏌熺紒妯哄闁靛洦纰嶉幏鍛吋閸モ晜鐎?
         d3.select('.tree-tooltip')
           .style('left', (event.pageX + 10) + 'px')
           .style('top', (event.pageY + 10) + 'px');
       })
       .on('mouseout', (event) => {
-        // 绉婚櫎鎵€鏈塼ooltip
+        // 缂備礁顦…宄扳枍鎼淬劌绠ラ柍褜鍓熷鍨箙缁扁偓oltip
         d3.selectAll('.tree-tooltip').remove();
         
-        // 鎭㈠鑺傜偣鍘熷鏍峰紡
+        // 闂佽鍘归崹褰捤囬弻銉﹀殟闁稿本绮屾禒顖炴煕濡厧鏋庢い顐ｅ姍瀵棄鐣￠幍顔绢攨
         this.applySelectedNodeStyles(nodeSize);
       })
       .on('click', (event, d) => {
-        // 浠ラ€変腑鑺傜偣涓轰腑蹇冩斁澶?
+        // 婵炲濮伴崕鐢稿焵椤掆偓椤︻噣鎳欓幋锔藉殟闁稿本绮屾禒顖氣槈閹捐銆冮柤鍨灱缁犳盯宕橀埡鍌涙緬婵?
         event.stopPropagation();
         this.zoomToNode(d[0], layoutResult, config);
         
-        // 楂樹寒閫変腑鐨勮妭鐐?
+        // 婵°倕鍊圭湁閻庡灚甯￠弻鍛緞婢跺骸骞€闂佹眹鍔岀€氼垱淇婇銏″€?
         this.applySelectedNodeStyles(nodeSize);
         
-        // 鏇存柊uiStore涓殑閫変腑鐘舵€?
+        // 闂佸搫娲ら悺銊╁蓟婵℃Store婵炴垶鎼╅崢鎯р枔閹达附鐒诲璺侯槼閸橆剟鏌ｅΟ鍨厫闁?
 
-        // 闃绘浜嬩欢鍐掓场锛岀‘淇濋€変腑鐘舵€佷笉琚叾浠栦簨浠惰鐩?
+        // 闂傚倸鍟扮划顖烆敆濞戞瑧顩查悗锝傛櫆椤愪粙鏌涢幇顓炵瑲闁革附妞介弫宥呯暆閳ь剟鍨惧Ο鑽も攳婵犻潧顑傞崑鎾村緞婢跺骸骞€闂佺粯顭堥崺鏍焵椤戞寧顦风紒妤€顦遍幃顕€顢曢姀鐘茬翻婵炲濮甸悧鏃傝姳閵婏妇顩烽柟顖炲亰濞差剟鏌?
         event.preventDefault();
       });
 
     this.applySelectedNodeStyles(nodeSize);
     
-    // 娣诲姞鐐瑰嚮绌虹櫧澶勯噸缃缉鏀剧殑鍔熻兘
+    // 濠电儑缍€椤曆勬叏閻愮儤鍊烽柣鐔告緲濮ｅ﹦绱掑畝鍐╊仩婵炲憞鍕窞闁告洦鍨板▍銏㈢磽閸愭儳鏋ょ紓鍌氼樀瀵劑宕滆閻ｉ亶鏌涢弮鍌氭灆闁?
     this.g.append('rect')
       .attr('class', 'zoom-reset')
       .attr('width', config.width)
@@ -274,28 +274,28 @@ export class SVGRenderer {
       .attr('fill', 'transparent')
       .style('pointer-events', 'all')
       .on('click', () => {
-        // 鏇存柊 uiStore 涓殑鐘舵€侊紝閲嶇疆缂╂斁鍜屽钩绉?
+        // 闂佸搫娲ら悺銊╁蓟?uiStore 婵炴垶鎼╅崢鎯р枔閹达附鍋愰柤鍝ヮ暯閸嬫挻绗熸繝鍕槷闂備焦褰冪粔鍫曟偪閸℃瑧纾介柍鍝勫€归弶褰掓煕濠婂啳瀚伴梺瑙ｆ櫇缁?
         if (typeof uiStore !== 'undefined') {
           uiStore.setZoom(1);
           uiStore.setPan({ x: 0, y: 0 });
         } else {
-          // 濡傛灉 uiStore 涓嶅彲鐢紝鐩存帴搴旂敤鍙樻崲
+          // 婵犵鈧啿鈧綊鎮?uiStore 婵炴垶鎸哥粔纾嬨亹閺屻儲鍋ㄦい顓熷笧缁€澶愭煟閳轰胶鎽犻悽顖氱摠閹棃寮崒娑欐闂佸憡鐟﹁摫鐎?
           this.updateTransform('');
         }
-        // 淇濇寔閫変腑鐘舵€侊紝鍙噸缃缉鏀?
-        // 娉ㄦ剰锛氳繖閲屼笉鎭㈠鑺傜偣鏍峰紡锛屽洜涓哄彲鑳芥湁鑺傜偣琚€変腑
+        // 婵烇絽娲︾换鍐偓鍨閺屽懏寰勬径搴″箑闂佺粯顭堥崺鏍焵椤戣法绛忕紒杈ㄧ箞瀹曪綁顢旈崼婵囶仧缂傚倸鍠氶崰姘辩磽婢舵劕缁?
+        // 濠电偛顦崝宥夊礈娴煎瓨鏅慨妯虹－缁犲綊姊洪幓鎺戭殭缂佹顦甸獮渚€濮€閻欌偓濡插鏌ら崫鍕偓濠氬磻閿濆鍐€鐎瑰嫭澹嗙涵鈧梺鎸庣☉閼活垰煤濠婂嫮鈻旈柛婵嗗鐠佹煡鏌ょ€圭姴袚婵犫偓娓氣偓閹崇偤宕掑鍐у寲闁荤偞鍑归崑濠囧焵椤掆偓椤︻噣鎳?
       });
 
     let showLabels = true;
     uiStore.subscribe(state => showLabels = state.showLabels)();
 
     if (showLabels) {
-      // 榛樿鍙樉绀哄彾鑺傜偣鏍囩锛岄伩鍏嶉噸鍙?
+      // 婵帗绋掗…鍫ヮ敇婵犳艾鐭楁い蹇撴噺閳绘梻绱掗埀顒勫传閸曨偊鐛庨梺鐓庢惈閸婂宕戦敐澶婂唨闁搞儮鏅╅崝顕€鏌ㄥ☉妯肩劯濞村皷鏅犲畷妤€顓兼径濠冾仧闂?
     let labelData = (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted')
       ? this.selectCircularLabels(circularLeafNodes, centerX, centerY, isLargeTree)
-      : circularLeafNodes; // 鐭╁舰甯冨眬鍙樉绀哄彾鑺傜偣
+      : circularLeafNodes; // 闂佹椿鍘搁弲娑㈡嚋閹殿喗鏆滈柛鎰╁妿濠€浼存煕濞嗘ü绨兼俊顖氼槺缁牓宕崟顐︾崕闂佺厧鎼崐濠氬磻?
     
-    // 瀵逛簬鐭╁舰甯冨眬锛岃繘涓€姝ヤ紭鍖栨爣绛惧瘑搴?
+    // 闁诲海鏁婚埀顒佺〒閼归箖鏌ｉ娑欐珔闁煎憡澹嗛弫顕€宕橀妸褎鎷遍梺鎸庣☉閻胶鎹㈠Ο鑽も枖闁逞屽墮椤垽濡烽妶鍥ф灎闂佸憡鐗楅悧妤呮偉閿濆洨椹抽柟顖嗗懏顫氶柟?
     if (layoutResult.type === 'rectangular') {
       labelData = this.optimizeRectangularLabels(labelData, isLargeTree);
     }
@@ -311,7 +311,7 @@ export class SVGRenderer {
           if (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted') {
             return this.getCircularLabelFontSize(labelData.length, isLargeTree);
           } else {
-            // 鐭╁舰甯冨眬鏍规嵁鍙惰妭鐐规暟閲忚皟鏁村瓧浣撳ぇ灏忥紝浣跨敤鏇村皬鐨勫瓧浣撲互閬垮厤閲嶅彔
+            // 闂佹椿鍘搁弲娑㈡嚋閹殿喗鏆滈柛鎰╁妿濠€浼存煛瀹ュ牜娼愮€规挷绶氬畷锝夊箚閺夎婵嬫煟閹邦垼娼愰柡鍡欏枛閺屽矁绠涘杈啀闂佽桨鐒﹀娆撴偤瑜庨幏鍛村箻閻愭垝娴烽柣蹇撶箰妤犲繒妲愬┑鍥ㄥ閻犳亽鍔嶉弳蹇涙煛閸ャ劍缍戦柣顭戝墴閹啴宕熼銈嗘喕婵炶揪绲鹃幐閿嬬閹烘鐒奸柛顭戝枛鐢娊姊洪幓鎺斝㈢憸?
             if (labelData.length > 300) return '4px';
             if (labelData.length > 150) return '5px';
             if (labelData.length > 80) return '6px';
@@ -329,8 +329,8 @@ export class SVGRenderer {
             const ux = dir ? dir.ux : Math.cos(Math.atan2(y - centerY, x - centerX));
             return x + offset * ux;
           } else if (layoutResult.type === 'rectangular') {
-            // 瀵逛簬鐭╁舰鏍戯紝灏嗘爣绛炬斁鍦ㄥ垎鏀湯绔彸渚?
-            return d[1].x + 22; // 淇濇寔鏍囩涓庡垎鏀棿闅旓紝鍚屾椂鍑忓皯瓒婄晫椋庨櫓
+            // 闁诲海鏁婚埀顒佺〒閼归箖鏌ｉ娑欐珔闁奸晲鍗冲浠嬪箣椤栨粎顦柣蹇撶箰濡瑩鎮ラ敐鍥╅┏闁绘劦鍓氶弶褰掓煕閿斿搫濡奸柛銊ラ叄瀵劑顢涘☉娆愮潣缂備焦妫忛崹鎷屻亹閸涘﹦鐟?
+            return d[1].x + 22;
           }
           return d[1].x + 8;
         })
@@ -343,7 +343,7 @@ export class SVGRenderer {
             const uy = dir ? dir.uy : Math.sin(Math.atan2(y - centerY, x - centerX));
             return y + offset * uy;
           } else if (layoutResult.type === 'rectangular') {
-            // 瀵逛簬鐭╁舰鏍戯紝灏嗘爣绛惧瀭鐩村眳涓簬鍒嗘敮
+            // 闁诲海鏁婚埀顒佺〒閼归箖鏌ｉ娑欐珔闁奸晲鍗冲浠嬪箣椤栨粎顦柣蹇撶箰濡瑩鎮ラ敐鍥╅┏闁诡垎鍛亾椤撱垺鍎庨柡澶嬪灩濠€宄扳槈閹垮啫骞掔紒顭戝墴瀹曟岸宕卞Ο缁樻
             return d[1].y;
           }
           return d[1].y + 3;
@@ -370,21 +370,23 @@ export class SVGRenderer {
         });
     }
     
-    // 娓叉煋娉ㄩ噴鍥惧眰
-    this.renderAnnotations(config, cladeColorMap);
+    // 濠电偞鎸稿鍫曟偂鐎ｎ亖鏋栭柕濞炬櫅濞呯偤鏌涢妷锕€鍔ら柣?
+    if (config.annotationDisplayMode !== 'legend') {
+      this.renderAnnotations(config, cladeColorMap);
+    }
 
-    // 娓叉煋瀹屾垚鍚庯紝鏍规嵁 uiStore 涓殑閫変腑鐘舵€侀噸鏂板簲鐢ㄩ珮浜晥鏋?
+    // 濠电偞鎸稿鍫曟偂鐎ｎ兘鍋撻悷鐗堟拱闁搞劍宀稿畷銉︽償椤栨粎顦梺鍝勭Х椤鐣?uiStore 婵炴垶鎼╅崢鎯р枔閹达附鐒诲璺侯槼閸橆剟鏌ｅΟ鍨厫闁逞屽厸缁舵岸宕抽幖浣告闁哄娉曠€瑰鏌ｉ～顒€濮傞柣婵愬枟缁傚秹顢欓懞銉︾彙闂?
     if (typeof uiStore !== 'undefined') {
       setTimeout(() => {
         let selectedNodes: string[] = [];
         uiStore.subscribe(state => selectedNodes = state.selectedNodes)();
         
         if (selectedNodes.length > 0) {
-          // 楂樹寒閫変腑鐨勮妭鐐?
+          // 婵°倕鍊圭湁閻庡灚甯￠弻鍛緞婢跺骸骞€闂佹眹鍔岀€氼垱淇婇銏″€?
           selectedNodes.forEach(nodeId => {
-            // 杩欓噷鍙互閫氳繃鍏朵粬鏂瑰紡瀹炵幇鑺傜偣楂樹寒
-            // 鐢变簬鎴戜滑娌℃湁鐩存帴鐨勬柟娉曟潵鑾峰彇鑺傜偣鍏冪礌锛屾垜浠彲浠ラ€氳繃鏁版嵁缁戝畾鏉ュ疄鐜?
-            // 娉ㄦ剰锛氳繖绉嶆柟娉曞彲鑳介渶瑕佽繘涓€姝ヤ紭鍖?
+            // 闁哄鏅滈悷鈺呭闯閻戣棄鐭楁い鏍ㄧ懁缁ㄤ即姊洪锝勪孩缂佽鍟村畷妤呭嫉閻㈢敻鎼ㄩ梺鍝勫€婚幊鎾舵閿涘嫧鍋撻崷顓炰户妤犵偛娲幊鐐哄磼濠婂啩鍖栨俊銈呭€圭湁閻?
+            // 闂佹眹鍨硅ぐ澶岃姳椤掑嫬绠ｉ柟瀛樼矋缁附绻涚仦绋垮⒉婵犫偓娓氣偓閹嫮鈧稒锚婢跺秹鏌ｉ妸銉ヮ仾闁哄瞼鍠庨埢鏃堝即閻旀悂妾烽梺鍏煎劤閸㈣尪銇愰崶顒佸殟闁稿本绮屾禒顖炴煕韫囨挸鏆熺紒鈧畝鍕櫖閻忕偞鍎抽悘澶娒归悪鈧崜娆掋亹閸欏顩烽柕澶嗘杹閸嬫挸顫濆畷鍥╃暫闂佽桨鑳舵晶妤€鐣垫担铏圭＜闁瑰瓨绻勯弳浼存煛婢跺牆鍔氶柣銈呭閹?
+            // 濠电偛顦崝宥夊礈娴煎瓨鏅慨妯虹－缁犲湱绱掓径濠勑ｉ柡宀€鍠庨埢鏃堝即閻愯尪顔夐梺鐓庡帠缁瑥銆掗崜浣瑰暫濞达絿鏅粻璇测槈閹绢垰浜惧┑顔界缚閸庢壆妲愰銏犵?
           });
         }
       }, 50);
@@ -414,32 +416,32 @@ export class SVGRenderer {
         const target = layoutResult.nodes[d.target];
 
         if (layoutResult.type === 'circular') {
-          // 瀵逛簬鍦嗗舰甯冨眬锛屼娇鐢ㄧ煩褰㈠垎鍙?
+          // 闁诲海鏁婚埀顒佺〒閼归箖鏌涢敃鈧Λ妤呮嚋閹殿喗鏆滈柛鎰╁妿濠€浼存煥濞戞ê顨欏┑鐐叉喘閹粙濡歌閸欐劗鎲搁懜顒€鐏╅柛銊ラ叄瀹?
           const midX = (source.x + target.x) / 2;
           const midY = (source.y + target.y) / 2;
           return `M ${source.x} ${source.y} L ${midX} ${source.y} L ${midX} ${target.y} L ${target.x} ${target.y}`;
         }
 
         if (layoutResult.type === 'rectangular') {
-          // 鎸夌収鍙傝€冩晥鏋滃浘鐨勬柟寮忕粯鍒剁煩褰㈡爲鏍戞灊
-          // 鎵€鏈夋爲鏋濋兘鏄洿瑙掑垎鍙夛紝姘村钩绾挎鏈濆彸
+          // 闂佸湱顭堥ˇ閬嶅矗鎼淬劌鐭楅柛灞剧妇閸嬫捇宕橀埡鍌涚彙闂佸搫顑嗙划灞矫瑰鈧幆鍐礋椤掍胶鍘甸悗娈垮枛缁绘帞鍒掗鐐茬闁告挷鑳堕崣鎰喐閼割剙鐏柣鏍ㄧ叀瀵粙骞嬮悙鍏稿枈
+          // 闂佸湱顣介崑鎾绘煛閸繍妲归柣鏍ㄧ叀瀵鈹戠€ｎ亜骞嬮梺鍝勫閸ㄥ啿煤鐠恒劍鍠嗛柟鐑樺灥閻庡鏌涘▎蹇ｆ缂佽鲸绻傞～婵嬪级閹达附灏欑紓浣哄亾鐎笛囶敊瀹€鍕珘婵犻潧妫楃粈?
           
-          // 妫€鏌ョ洰鏍囪妭鐐规槸鍚︿负鍙惰妭鐐?
+          // 濠碘槅鍋€閸嬫捇鏌＄仦璇插姢婵炶弓鍗冲浠嬪炊椤忓嫀婵嬫煟閹邦垼娼愭俊鍙夋倐瀹曘儵鏁傞懗顖滎槹闂佸憡鐟﹂崕鍏间繆椤撱垺鍊?
           const isTargetLeaf = !findNodeById(tree.root, d.target)?.children || findNodeById(tree.root, d.target)?.children.length === 0;
           
           if (isTargetLeaf) {
-            // 瀵逛簬鍙惰妭鐐癸紝纭繚鏈変竴涓按骞冲悜鍙崇殑绾挎
-            // 璁＄畻姘村钩绾挎鐨勭粓鐐箈鍧愭爣锛岀‘淇濇湞鍙?
-            const horizontalEndX = Math.max(source.x, target.x) + 18; // 杞婚噺鍙冲欢锛岄伩鍏嶇煩褰㈡爲鏁翠綋澶栨孩
+            // 闁诲海鏁婚埀顒佺〒閼归箖鏌涘▎鎰姸濠碘槅鍙冮幃娆撴儌閸濄儳顦紒缁㈠弾閸犳洜鎹㈠璺哄珘濠㈣泛顦遍鍗炩槈閹垮啩绨奸柟绋款樀閻涱噣宕橀崣澶娾偓濠氭煕濞嗗繒锛嶆繛鍫熷灩閻ヮ亪骞愭惔顔兼杸
+            // 闁荤姳绶ょ槐鏇㈡偩鐠囧樊娼╅柡澶嬪灴閹割剛绱掗悙顒€顕滄い鏂跨焸閹啴宕熼鐘电厜闂佺粯鍔楅悾褔鏌涜閸旀牠鎮ラ敐澶嬫櫖鐎光偓閳ь剟鍨惧Ο鑽も攳婵犻潧娲︾弧鍌炴煕?
+            const horizontalEndX = Math.max(source.x, target.x) + 18;
             return `M ${source.x} ${source.y} L ${target.x} ${source.y} L ${target.x} ${target.y} L ${horizontalEndX} ${target.y}`;
           } else {
-            // 瀵逛簬闈炲彾鑺傜偣锛屼娇鐢ㄦ甯哥殑鐩磋鍒嗗弶
+            // 闁诲海鏁婚埀顒佺〒閼归箖姊婚崼銏犱粶鐟滀即绠栭幊鐐哄磼濠婂啩鍖栭梺鎸庣☉婵傛梹绻涢崶顒佸仺闁靛瀵岄崝鈧柣銏╁灠閹芥粌鈻撻幋锔藉剮缁炬儳顑愬锟犳煕閹烘垶顥滅€?
             return `M ${source.x} ${source.y} L ${target.x} ${source.y} L ${target.x} ${target.y}`;
           }
         }
 
         if (layoutResult.type === 'radial') {
-          // 瀵逛簬寰勫悜甯冨眬锛屼娇鐢ㄧ洿绾垮垎鏀?
+          // 闁诲海鏁婚埀顒佺〒閼瑰墽鈧灚婢樼€氼剟骞冨鍛殰闁告劑鍔庡﹢浼存煥濞戞ê顨欏┑鐐叉喘閹粙濡歌缁绢垳绱掗幆褏浠㈤柛銊ラ叄瀵?
           return `M ${source.x} ${source.y} L ${target.x} ${target.y}`;
         }
 
@@ -453,10 +455,10 @@ export class SVGRenderer {
         return ensureContrast(config.branchColor || '#888');
       })
       .attr('stroke-width', d => {
-        // 鍩轰簬鐩爣鑺傜偣娣卞害璁＄畻鏍戞灊瀹藉害锛屾牴鑺傜偣鏈€绮楋紝鍙惰妭鐐规渶缁?
+        // 闂佺硶鏅炲銊ц姳椤掑嫭鍎庢い鏃傛櫕閸ㄥジ鏌ら崫鍕偓濠氬磻閿濆惓搴ㄥ础閻愬樊鍞洪柣鐘辩筏缁辨洟鎮炬繝姘唨闁瑰鍋熸禍浼存倵绾懏顥夐悗瑙勫▕閺佸秶浠﹂崜褍顥戦梺鐓庢惈閸婂宕戦敐澶婂珘闁逞屽墰閸掓帒螖鐎ｎ剛顦梺鍛婄懄閸庡吋淇婇銏″€烽悷娆忓娴犳绱?
         const targetDepth = nodeDepth.get(d.target) || 0;
         const widthRatio = 1 - (targetDepth / Math.max(1, maxDepth));
-        // 浣跨敤鏇存槑鏄剧殑瀹藉害鍙樺寲鑼冨洿
+        // 婵炶揪缍€濞夋洟寮妶澶婂嵆閻庢稒蓱椤牠鏌￠崟顐⑩挃婵炲牊鍨归埀顒傤攰濡嫮鈧濞婂畷锝呂熼崫鍕靛殭闂佽偐鍘ч崯顐⒚?
         const minWidth = branchWidth * 0.4;
         const maxWidth = branchWidth * 1.6;
         return Math.max(minWidth, minWidth + (maxWidth - minWidth) * widthRatio);
@@ -466,7 +468,7 @@ export class SVGRenderer {
     const leafNodes = Object.entries(layoutResult.nodes).filter(([id]) => isLeafNode(tree.root, id));
     const largeTreeNodeData = layoutResult.type === 'circular' && leafNodes.length > 300 ? [] : leafNodes;
 
-    // 涓哄ぇ鍨嬫爲鐨勮妭鐐规坊鍔犱氦浜掓晥鏋?
+    // 婵炴垶鎸搁幖顐﹀Φ閸ヮ剙鍨傞悗锝庡亞閸╂劙鏌ｉ妸銉ヮ伂濠碘槅鍙冮幃娆戞喆閸曨偅缍夐梺鍛婃⒒婵啿顫濋敂鐣岊洸闁圭儤鎸诲▍蹇涙煛?
     const largeNodeSize = nodeSize * 0.8;
     this.g.selectAll('.node')
       .data(largeTreeNodeData)
@@ -482,10 +484,10 @@ export class SVGRenderer {
       .attr('stroke-width', 2)
       .attr('cursor', 'pointer')
       .on('mouseover', (event, d) => {
-        // 鍏堢Щ闄ゅ彲鑳藉瓨鍦ㄧ殑鏃ooltip
+        // 闂佺绻愰悧蹇庣昂闂傚倸瀚ㄩ崐鏇°亹閺屻儲鍤勯柦妯侯槺閹界娀鏌涢敂鍝勫婵炲牊鍨垮顕€鈥旂花鍗璴tip
         d3.selectAll('.tree-tooltip').remove();
         
-        // 鍒涘缓宸ュ叿鎻愮ず鍏冪礌
+        // 闂佸憡甯楃粙鎴犵磽閹炬剚鍟呴柕澶堝劚瀵版棃鏌熺紒妯哄闁靛洦宀稿畷妤呭礃椤忓棭妲?
         const tooltip = d3.select('body')
           .append('div')
           .attr('class', 'tree-tooltip')
@@ -500,53 +502,53 @@ export class SVGRenderer {
           .style('left', (event.pageX + 10) + 'px')
           .style('top', (event.pageY + 10) + 'px');
         
-        // 鑾峰彇鑺傜偣淇℃伅
+        // 闂佸吋鍎抽崲鑼躲亹閸ヮ剚鍤嶉柛灞剧矊娴狀垰菐閸ワ絽澧插ù?
         const node = findNodeById(tree.root, d[0]);
         if (node) {
           const tooltipContent = `
-            <div><strong>鑺傜偣鍚嶇О:</strong> ${node.name || 'Unnamed'}</div>
-            <div><strong>鑺傜偣ID:</strong> ${node.id}</div>
-            ${node.children && node.children.length > 0 ? `<div><strong>瀛愯妭鐐规暟:</strong> ${node.children.length}</div>` : ''}
-            ${node.length ? `<div><strong>鍒嗘敮闀垮害:</strong> ${node.length}</div>` : ''}
-            <div><small>鐐瑰嚮鑺傜偣浠ヨ鑺傜偣涓轰腑蹇冩斁澶?/small></div>
-            <div><small>鐐瑰嚮绌虹櫧澶勯噸缃缉鏀?/small></div>
+            <div><strong>闂佺厧鎼崐濠氬磻閿濆瑙︾€广儱娉?</strong> ${node.name || 'Unnamed'}</div>
+            <div><strong>闂佺厧鎼崐濠氬磻椤ゅ粚:</strong> ${node.id}</div>
+            ${node.children && node.children.length > 0 ? `<div><strong>闁诲孩绋掗崝妯讳繆椤撱垺鍊烽悷娆忓濞?</strong> ${node.children.length}</div>` : ''}
+            ${node.length ? `<div><strong>闂佸憡甯掑Λ娆撳极椤曗偓濮婂綊宕归纰卞敽:</strong> ${node.length}</div>` : ''}
+            <div><small>闂佺粯鍔楅幊鎾诲吹椤曗偓閹崇偤宕掑鍐у寲婵炲濮伴崕鎾敋濮樿埖鍤嶉柛灞剧矊娴狀垰鈽夐幘瑙勩€冮柤鍨灱缁犳盯宕橀埡鍌涙緬婵?/small></div>
+            <div><small>闂佺粯鍔楅幊鎾诲吹椤斿墽鐭氶柧蹇氼潐椤忋倕顭跨捄鍝勵伃闁革絽鎽滅槐鏃堫敊閸撗呯闂佽　鍋?/small></div>
           `;
           tooltip.html(tooltipContent);
         }
         
-        // 榧犳爣鎮仠鏃堕珮浜妭鐐?
+        // 婵崿鍛ｉ柣鏍电秮楠炲啴顢楅埀顒佺閻樿绫嶉柛顐ｆ礈瑜邦垰霉濠婂骸鏋﹀┑鈽嗗弮閹?
         d3.select(event.currentTarget)
           .attr('stroke', '#ffcc00')
           .attr('r', largeNodeSize * 1.5);
       })
       .on('mousemove', (event) => {
-        // 鏇存柊宸ュ叿鎻愮ず浣嶇疆
+        // 闂佸搫娲ら悺銊╁蓟婵犲偆鍟呴柕澶堝劚瀵版棃鏌熺紒妯哄闁靛洦纰嶉幏鍛吋閸モ晜鐎?
         d3.select('.tree-tooltip')
           .style('left', (event.pageX + 10) + 'px')
           .style('top', (event.pageY + 10) + 'px');
       })
       .on('mouseout', (event) => {
-        // 绉婚櫎鎵€鏈塼ooltip
+        // 缂備礁顦…宄扳枍鎼淬劌绠ラ柍褜鍓熷鍨箙缁扁偓oltip
         d3.selectAll('.tree-tooltip').remove();
         
-        // 鎭㈠鑺傜偣鍘熷鏍峰紡
+        // 闂佽鍘归崹褰捤囬弻銉﹀殟闁稿本绮屾禒顖炴煕濡厧鏋庢い顐ｅ姍瀵棄鐣￠幍顔绢攨
         this.applySelectedNodeStyles(largeNodeSize);
       })
       .on('click', (event, d) => {
-        // 浠ラ€変腑鑺傜偣涓轰腑蹇冩斁澶?
+        // 婵炲濮伴崕鐢稿焵椤掆偓椤︻噣鎳欓幋锔藉殟闁稿本绮屾禒顖氣槈閹捐銆冮柤鍨灱缁犳盯宕橀埡鍌涙緬婵?
         event.stopPropagation();
         this.zoomToNode(d[0], layoutResult, config);
         
-        // 楂樹寒閫変腑鐨勮妭鐐?
+        // 婵°倕鍊圭湁閻庡灚甯￠弻鍛緞婢跺骸骞€闂佹眹鍔岀€氼垱淇婇銏″€?
         this.applySelectedNodeStyles(largeNodeSize);
         
-        // 鏇存柊uiStore涓殑閫変腑鐘舵€?
+        // 闂佸搫娲ら悺銊╁蓟婵℃Store婵炴垶鎼╅崢鎯р枔閹达附鐒诲璺侯槼閸橆剟鏌ｅΟ鍨厫闁?
 
-        // 闃绘浜嬩欢鍐掓场锛岀‘淇濋€変腑鐘舵€佷笉琚叾浠栦簨浠惰鐩?
+        // 闂傚倸鍟扮划顖烆敆濞戞瑧顩查悗锝傛櫆椤愪粙鏌涢幇顓炵瑲闁革附妞介弫宥呯暆閳ь剟鍨惧Ο鑽も攳婵犻潧顑傞崑鎾村緞婢跺骸骞€闂佺粯顭堥崺鏍焵椤戞寧顦风紒妤€顦遍幃顕€顢曢姀鐘茬翻婵炲濮甸悧鏃傝姳閵婏妇顩烽柟顖炲亰濞差剟鏌?
         event.preventDefault();
       });
     
-    // 娣诲姞鐐瑰嚮绌虹櫧澶勯噸缃缉鏀剧殑鍔熻兘
+    // 濠电儑缍€椤曆勬叏閻愮儤鍊烽柣鐔告緲濮ｅ﹦绱掑畝鍐╊仩婵炲憞鍕窞闁告洦鍨板▍銏㈢磽閸愭儳鏋ょ紓鍌氼樀瀵劑宕滆閻ｉ亶鏌涢弮鍌氭灆闁?
     this.g.append('rect')
       .attr('class', 'zoom-reset')
       .attr('width', config.width)
@@ -554,16 +556,16 @@ export class SVGRenderer {
       .attr('fill', 'transparent')
       .style('pointer-events', 'all')
       .on('click', () => {
-        // 鏇存柊 uiStore 涓殑鐘舵€侊紝閲嶇疆缂╂斁鍜屽钩绉?
+        // 闂佸搫娲ら悺銊╁蓟?uiStore 婵炴垶鎼╅崢鎯р枔閹达附鍋愰柤鍝ヮ暯閸嬫挻绗熸繝鍕槷闂備焦褰冪粔鍫曟偪閸℃瑧纾介柍鍝勫€归弶褰掓煕濠婂啳瀚伴梺瑙ｆ櫇缁?
         if (typeof uiStore !== 'undefined') {
           uiStore.setZoom(1);
           uiStore.setPan({ x: 0, y: 0 });
         } else {
-          // 濡傛灉 uiStore 涓嶅彲鐢紝鐩存帴搴旂敤鍙樻崲
+          // 婵犵鈧啿鈧綊鎮?uiStore 婵炴垶鎸哥粔纾嬨亹閺屻儲鍋ㄦい顓熷笧缁€澶愭煟閳轰胶鎽犻悽顖氱摠閹棃寮崒娑欐闂佸憡鐟﹁摫鐎?
           this.updateTransform('');
         }
-        // 淇濇寔閫変腑鐘舵€侊紝鍙噸缃缉鏀?
-        // 娉ㄦ剰锛氳繖閲屼笉鎭㈠鑺傜偣鏍峰紡锛屽洜涓哄彲鑳芥湁鑺傜偣琚€変腑
+        // 婵烇絽娲︾换鍐偓鍨閺屽懏寰勬径搴″箑闂佺粯顭堥崺鏍焵椤戣法绛忕紒杈ㄧ箞瀹曪綁顢旈崼婵囶仧缂傚倸鍠氶崰姘辩磽婢舵劕缁?
+        // 濠电偛顦崝宥夊礈娴煎瓨鏅慨妯虹－缁犲綊姊洪幓鎺戭殭缂佹顦甸獮渚€濮€閻欌偓濡插鏌ら崫鍕偓濠氬磻閿濆鍐€鐎瑰嫭澹嗙涵鈧梺鎸庣☉閼活垰煤濠婂嫮鈻旈柛婵嗗鐠佹煡鏌ょ€圭姴袚婵犫偓娓氣偓閹崇偤宕掑鍐у寲闁荤偞鍑归崑濠囧焵椤掆偓椤︻噣鎳?
       });
 
     let showLabels = true;
@@ -577,13 +579,13 @@ export class SVGRenderer {
         const parentId = parentById.get(id);
         const parentPos = parentId ? layoutResult.nodes[parentId] : null;
         if (parentPos) {
-          // 鏈夌埗鑺傜偣鏃讹紝鍩轰簬鐖惰妭鐐规柟鍚?
+          // 闂佸搫鐗嗛ˇ閬嶅春濡ゅ懏鍤嶉柛灞剧矊娴狀垶鏌￠崘顓у晣缂佽鲸绻堝畷鐑樻姜閹殿喛澹橀梺缁樼墬閸庡吋淇婇銏″€烽悷娆忓閻撴瑩鏌?
           const dx = pos.x - parentPos.x;
           const dy = pos.y - parentPos.y;
           const len = Math.hypot(dx, dy) || 1;
           labelDirection.set(id, { angle: Math.atan2(dy, dx), ux: dx / len, uy: dy / len });
         } else {
-          // 鏃犵埗鑺傜偣鏃讹紙鏍硅妭鐐癸級锛屽熀浜庝腑蹇冩柟鍚?
+          // 闂佸搫鍟版慨鐑藉春濡ゅ懏鍤嶉柛灞剧矊娴狀垶鏌￠崘顓у晣缂佽鲸鐟╁鐣屾兜閸涱厙婵嬫煟閹邦喗顏熺紒杈ㄥ哺閺佸秶浠﹂悾灞芥暏婵炲瓨绮岀花濂告嚈閹达絿鐤€闁告劏鏅滈悡娆撴煕?
           const dx = pos.x - centerX;
           const dy = pos.y - centerY;
           const len = Math.hypot(dx, dy) || 1;
@@ -639,7 +641,9 @@ export class SVGRenderer {
         });
     }
 
-    this.renderAnnotations(config, cladeColorMap);
+    if (config.annotationDisplayMode !== 'legend') {
+      this.renderAnnotations(config, cladeColorMap);
+    }
     this.applySelectedNodeStyles(largeNodeSize);
   }
 
@@ -699,18 +703,18 @@ export class SVGRenderer {
   }
 
   /**
-   * 閫掑綊璁＄畻姣忎釜鑺傜偣鐨勬繁搴﹀眰绾?
-   * @param node 褰撳墠鑺傜偣
-   * @param depth 褰撳墠娣卞害
-   * @param nodeDepth 瀛樺偍鑺傜偣娣卞害鐨勬槧灏?
-   * @returns 鏈€澶ф繁搴﹀€?
+   * 闂備緡鍋呯敮鎺旂礊婵犲嫭濯奸柨娑樺閺嗩剚鎱ㄩ敐鍛闂佸弶绮撻幊鐐哄磼濠婂啩鍖栭梺姹囧妼鐎氼厾鎹㈡担瑙勫劅闁挎洍鍋撻柣顏呭閻?
+   * @param node 閻熸粎澧楅幐鍛婃櫠閻樼粯鍤嶉柛灞剧矊娴?
+   * @param depth 閻熸粎澧楅幐鍛婃櫠閻樼潿搴ㄥ础閻愬樊鍞?
+   * @param nodeDepth 闁诲孩绋掗敋闁稿绉归幊鐐哄磼濠婂啩鍖栧┑鐑囩到瀹曨剛鈧濞婇幆鍐礋椤掍絿渚€鎮?
+   * @returns 闂佸搫鐗冮崑鎾愁熆閸棗瀚粻鎺楀箹鏉堝墽鐣遍柍?
    */
   private calculateNodeDepths(
     node: any,
     depth: number,
     nodeDepth: Map<string, number>
   ): number {
-    // 纭繚鑺傜偣鏈?id 灞炴€?
+    // 缂佺虎鍙庨崰鏇犳崲濮樿埖鍤嶉柛灞剧矊娴狀垶鏌?id 闁诲繒鍋熼崑鐐哄焵?
     if (node.id) {
       nodeDepth.set(node.id, depth);
     }
@@ -729,39 +733,39 @@ export class SVGRenderer {
   }
 
   /**
-   * 浼樺寲鐭╁舰鏍戠殑鏍囩瀵嗗害锛岄伩鍏嶆爣绛鹃噸鍙?
-   * @param labels 鍘熷鏍囩鏁版嵁
-   * @param isLargeTree 鏄惁涓哄ぇ鍨嬫爲
-   * @returns 浼樺寲鍚庣殑鏍囩鏁版嵁
+   * 婵炴潙鍚嬮敋閻庡灚鐓￠幆宀勫煛娴ｈ棄鐓傞梺鍝勭У閸ㄧ懓鈻撻幋锕€鍐€闁搞儮鏅╅崝顕€鎮楅棃娑欘棞閻庤濞婇弫宥呯暆閸曨亞绱氶梺绋跨箰缁夌敻鎮ラ敐鍥╅┏濡わ絽鍟▍銏ゆ煕?
+   * @param labels 闂佸憡顭囬崰搴綖閹版澘鍐€闁搞儮鏅╅崝顕€鏌℃担鍝勵暭鐎?
+   * @param isLargeTree 闂佸搫瀚烽崹浼村箚娴ｅ湱鈻旈柛婵嗗娴滐綁鏌涢妸銉剱闁?
+   * @returns 婵炴潙鍚嬮敋閻庡灚鐓″畷銉︽償閿濆棛鏆犻梺鍝勭Т濞层劑顢楅悜钘夋瀬闁绘鐗嗙粊?
    */
   private optimizeRectangularLabels(
     labels: Array<[string, { x: number; y: number }]>,
     isLargeTree: boolean
   ): Array<[string, { x: number; y: number }]> {
-    // 瀵逛簬澶у瀷鏍戯紝閲囩敤鏈€婵€杩涚殑鏍囩闄愬埗绛栫暐
+    // 闁诲海鏁婚埀顒佺〒閼规儳顭块崼鍡楀暟閳ь剛鍏樺浠嬪箣椤栨粎顦梻浣瑰絻濞层劑寮妶澶婂珘闁逞屽墮閳规垿鍩€椤掍焦浜ゆ繛鎴炵閻ｉ亶鏌″鍛窛妞ゆ帞鍏樺浠嬪箛椤掆偓閻撴垹绱掑☉娆戝⒈闁?
     if (labels.length > 100) {
-      // 鍙繚鐣欑害40涓爣绛撅紝纭繚鍙鎬?
+      // 闂佸憡鐟禍娆戞崲濮樿埖鍋╂繛鍡樺灥椤?0婵炴垶鎼╂禍婵嬫偉閿濆洨椹抽柟鎯ф噽缁€澶岀棯椤撗冩灆缂佺粯宀稿畷锝夘敍濠垫劕娈洪梺?
       const maxLabels = 40;
       const step = Math.ceil(labels.length / maxLabels);
       return labels.filter((_, index) => index % step === 0);
     } else if (labels.length > 60) {
-      // 涓瀷鏍戯紝淇濈暀绾?0涓爣绛?
+      // 婵炴垶鎼╅崢濂告倵閻戣棄鍐€闁规惌鍨崇粈澶娗庨崶銊х畼闁哄棌鍋撶紓?0婵炴垶鎼╂禍婵嬫偉閿濆洨椹?
       const maxLabels = 50;
       const step = Math.ceil(labels.length / maxLabels);
       return labels.filter((_, index) => index % step === 0);
     } else if (labels.length > 30) {
-      // 灏忓瀷鏍戯紝淇濈暀绾?0涓爣绛?
+      // 闁诲繐绻愮换鎰版倵閻戣棄鍐€闁规惌鍨崇粈澶娗庨崶銊х畼闁哄棌鍋撶紓?0婵炴垶鎼╂禍婵嬫偉閿濆洨椹?
       const maxLabels = 60;
       const step = Math.ceil(labels.length / maxLabels);
       return labels.filter((_, index) => index % step === 0);
     }
     
-    // 鎸?Y 鍧愭爣鎺掑簭鏍囩
+    // 闂?Y 闂佺鍕闁绘牭缍侀獮鎺楀箳閹寸姷顣查梺鍝勭Т濞层劑顢?
     const sortedLabels = [...labels].sort((a, b) => a[1].y - b[1].y);
     
-    // 閲囨牱鏍囩锛岀‘淇濆瀭鐩存柟鍚戜笂鏈夎冻澶熼棿璺?
+    // 闂備焦褰冨ú锕傛偋闁秴鍐€闁搞儮鏅╅崝顕€鏌ㄥ☉妯肩伇闁炽儲蓱缁屽崬鈹戦崱娆屽亾椤撱垺鍎庨悗娑櫳戦悡娆撴煕濮橆厼鐏ｇ紒妤€鍊垮鍨緞鎼粹€虫灆婵犮垹澧庨崰鏍涚捄銊﹀磯?
     const optimizedLabels: Array<[string, { x: number; y: number }]> = [];
-    // 澶у箙澧炲姞鏈€灏忓瀭鐩撮棿璺濓紝纭繚鏍囩涓嶉噸鍙?
+    // 婵犮垹鐖㈤崘顏嗘毌婵犫拃鍛粶濠殿喚鍋ゅ鐢稿焵椤掑倷鐒婇煫鍥ㄦ尵閳ь剦鍙冮幆鍕箻椤旀枻绱甸柣鐘靛劋缁绘劗妲愬┑鍫熷厹妞ゆ棁宕电粻浠嬫煛瀹ュ懏宸濇い鎺楁敱缁嬪顓兼径濠冾仧闂?
     const minYSpacing = isLargeTree ? 20 : 25;
     let lastY = -Infinity;
     
@@ -777,10 +781,10 @@ export class SVGRenderer {
   }
 
   /**
-   * 浠ラ€変腑鑺傜偣涓轰腑蹇冭繘琛屽尯鍩熸斁澶?
-   * @param nodeId 閫変腑鑺傜偣鐨処D
-   * @param layoutResult 甯冨眬缁撴灉
-   * @param config 娓叉煋閰嶇疆
+   * 婵炲濮伴崕鐢稿焵椤掆偓椤︻噣鎳欓幋锔藉殟闁稿本绮屾禒顖氣槈閹捐銆冮柤鍨灱缁犳盯宕橀鐘殿啋闁荤偞绋戦懟顖滀焊椤栫偛鏄ラ柣鏂挎啞閺夌懓顭?
+   * @param nodeId 闂備緡鍋勯ˇ顕€鎳欓幋锔藉殟闁稿本绮屾禒顖炴煟閵娿儱娈珼
+   * @param layoutResult 闁汇埄鍨伴崯顐︽儑椤掑倻纾奸柟鎯ь嚟娴?
+   * @param config 濠电偞鎸稿鍫曟偂鐎ｎ喗鐓€鐎广儱娲ㄩ弸?
    */
   private zoomToNode(
     nodeId: string,
@@ -793,41 +797,41 @@ export class SVGRenderer {
     const centerX = config.width / 2;
     const centerY = config.height / 2;
     
-    // 璁＄畻骞崇Щ閲忥紝浣块€変腑鑺傜偣鎴愪负涓績
+    // 闁荤姳绶ょ槐鏇㈡偩婵犳氨宓佺€规洖娉﹂埡鍛厒闊洢鍎崇粈澶娒归敐鍛仴闁逞屽墮椤︻噣鎳欓幋锔藉殟闁稿本绮屾禒顖炴煙鐎涙ê濮冮悹鎰枑缁嬪顢橀悙闈涱洭
     const translateX = centerX - nodePos.x;
     const translateY = centerY - nodePos.y;
     
-    // 璁＄畻缂╂斁姣斾緥锛屾斁澶?鍊?
+    // 闁荤姳绶ょ槐鏇㈡偩閼姐倗纾介柍鍝勫€归弶瑙勬叏閿濆棙鐓ｇ紒韬插劦閺佸秶浠﹂悙顒佹緬婵?闂?
     const scale = 2;
     
-    // 鍏堟洿鏂?uiStore 涓殑閫変腑鐘舵€?
+    // 闂佺绻愰悧濠偯洪崸妤€妫?uiStore 婵炴垶鎼╅崢鎯р枔閹达附鐒诲璺侯槼閸橆剟鏌ｅΟ鍨厫闁?
     if (typeof uiStore !== 'undefined') {
       uiStore.selectNode(nodeId);
     }
     
-    // 鐒跺悗鏇存柊缂╂斁鍜屽钩绉荤姸鎬?
+    // 闂佺粯甯熷▔娑㈠箖濡ゅ懎鍗抽悗娑櫳戦悡鈧紓鍌氬€甸弲婊堝棘娓氣偓瀹曨亞浠︽禒瀣皺缂備礁顦冲畷鍨叏閹间礁绠?
     if (typeof uiStore !== 'undefined') {
-      // 璁＄畻鏂扮殑缂╂斁鍜屽钩绉荤姸鎬?
+      // 闁荤姳绶ょ槐鏇㈡偩婵犳艾妫橀柟娈垮枟閻ｈ京绱撻崒妤佹珕闁哄倷绶氬畷顏嗕沪娴犲灏欑紓浣割槼瀹曞灚鎱ㄩ幖浣哥畱?
       const newZoom = scale;
       const newPan = { x: translateX, y: translateY };
       
-      // 鏇存柊 uiStore 鐘舵€?
+      // 闂佸搫娲ら悺銊╁蓟?uiStore 闂佺粯顭堥崺鏍焵?
       uiStore.setZoom(newZoom);
       uiStore.setPan(newPan);
     } else {
-      // 濡傛灉 uiStore 涓嶅彲鐢紝鐩存帴搴旂敤鍙樻崲
+      // 婵犵鈧啿鈧綊鎮?uiStore 婵炴垶鎸哥粔纾嬨亹閺屻儲鍋ㄦい顓熷笧缁€澶愭煟閳轰胶鎽犻悽顖氱摠閹棃寮崒娑欐闂佸憡鐟﹁摫鐎?
       const transform = `translate(${translateX}, ${translateY}) scale(${scale})`;
       this.updateTransform(transform);
     }
     
-    // 淇濇寔閫変腑鑺傜偣鐨勯珮浜姸鎬?
-    // 娉ㄦ剰锛氱敱浜庢垜浠槸鍦⊿VG鍙樻崲灞傞潰杩涜缂╂斁锛岃妭鐐圭殑DOM鍏冪礌骞舵病鏈夋敼鍙?
-    // 鎵€浠ラ€変腑鐘舵€佷細鑷姩淇濇寔锛屼笉闇€瑕侀澶栨搷浣?
+    // 婵烇絽娲︾换鍐偓鍨閺屽懏寰勬径搴″箑闂佺厧鎼崐濠氬磻閿濆鍎嶉柛鏇ㄥ灣瑜邦垰霉濠婂骸鏋ゅ┑顔芥倐楠炩偓?
+    // 濠电偛顦崝宥夊礈娴煎瓨鏅慨妯块哺閺嗙姴霉濠婂啫顒㈤柛銊︾矋缁傛帡顢楁担鍓愶箓鏌涢敂鐟扳棦VG闂佸憡鐟﹁摫鐎规洝灏欐禒锕傚磼閻愬瓨銆冮柡澶嗘櫆缁嬫牠銆侀幋鐘电＝闁冲搫鍊归弶褰掓煥濞戞鐒峰┑鈽嗗弮閹瑩宕烽鐔烘殸DOM闂佺绻愰崯鎵矆瀹€鍕祦闁煎摜鏁稿楣冩煛閸繍妲归柡浣搞偢瀹?
+    // 闂佸湱顣介崑鎾趁归悩顔煎姦闁逞屽墮椤︻噣鎳欓幋锔藉亹闁煎摜顣介崑鎾存媴妞嬪海鐛ラ梺鐓庮殠娴滄粍鎱ㄩ埡鍌溾攳婵犻潧娲ら惁顕€鏌ㄥ☉妯侯殭缂佹顦靛Λ渚€鍩€椤掑倹鍟哄〒姘ｅ亾妞ゃ倕鍊瑰鍕冀閵婏附鍎ユ繛?
   }
 
   /**
-   * 娓叉煋娉ㄩ噴鍥惧眰
-   * @param config 娓叉煋閰嶇疆
+   * 濠电偞鎸稿鍫曟偂鐎ｎ亖鏋栭柕濞炬櫅濞呯偤鏌涢妷锕€鍔ら柣?
+   * @param config 濠电偞鎸稿鍫曟偂鐎ｎ喗鐓€鐎广儱娲ㄩ弸?
    */
   private renderAnnotations(config: RenderConfig, cladeColorMap: Map<string, string> | null): void {
     let layers: Array<{ id: string; visible: boolean; order: number; data: AnnotationData }> = [];
@@ -867,10 +871,10 @@ export class SVGRenderer {
   }
 
   /**
-   * 娓叉煋鑹插甫娉ㄩ噴
-   * @param group SVG缁勫厓绱?
-   * @param annotation 娉ㄩ噴鏁版嵁
-   * @param config 娓叉煋閰嶇疆
+   * 濠电偞鎸稿鍫曟偂鐎ｎ喗鍤岄柟缁樺笧閺併劍绻涙径鍫濆闁?
+   * @param group SVG缂傚倷绀佺€氼剟宕㈤幘鑸殿潟?
+   * @param annotation 濠电偛顦崝鎴﹀闯閹绢喖鏋侀柣妤€鐗嗙粊?
+   * @param config 濠电偞鎸稿鍫曟偂鐎ｎ喗鐓€鐎广儱娲ㄩ弸?
    */
   private renderColorStrip(
     group: d3.Selection<SVGGElement, unknown, null, undefined>,
@@ -1165,11 +1169,11 @@ export class SVGRenderer {
   private leafNodeIdSet = new Set<string>();
 }
 
-// 纭繚鍦ㄦ覆鏌撳墠璁剧疆鏍戝拰鑺傜偣鏁版嵁
+// 缂佺虎鍙庨崰鏇犳崲濮樿泛鎹堕柕濠忕畳椤╊偊鏌＄仦鐐碍濠⒀呭Х閹峰宕滆閺嬪倿鏌″鍡楃仴闁硅渹鍗抽幊鐐哄磼濠婂啩鍖栭梺杞拌兌婢ф鐣?
 export const createRenderer = (container: HTMLElement, config: RenderConfig): any => {
   const renderer = new SVGRenderer(container, config);
   
-  // 閲嶅啓render鏂规硶锛岀‘淇濊缃爲鍜岃妭鐐规暟鎹?
+  // 闂備焦褰冪粔鎾疮閹兼吂nder闂佸搫鍊介～澶屾兜閸洘鏅€光偓閳ь剟鍨惧Ο鑽も攳婵犻潧顭崯搴ｇ磽閸愭儳鏋熼柣鏍ㄧ叀瀹曨亜鐣濋崘銊庢繈鏌ｉ幇顖ｆ綈闁哄棛鍠栭獮?
   const originalRender = renderer.render;
   renderer.render = function(tree: any, layoutResult: LayoutResult, config: RenderConfig) {
     this.tree = tree;
@@ -1179,5 +1183,6 @@ export const createRenderer = (container: HTMLElement, config: RenderConfig): an
   
   return renderer;
 };
+
 
 

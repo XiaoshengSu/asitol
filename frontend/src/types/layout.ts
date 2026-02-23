@@ -23,6 +23,7 @@ export interface RenderConfig {
   nodeColor?: string;
   branchColor?: string;
   branchColorMode?: 'single' | 'clade';
+  annotationDisplayMode?: 'inline' | 'legend';
   nodeSize?: number;
   branchWidth?: number;
 }
