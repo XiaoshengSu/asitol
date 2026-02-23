@@ -15,6 +15,7 @@
   let branchColor = '#8f96a3';
   let branchColorMode: 'single' | 'clade' = 'clade';
   let currentLayout: LayoutType = 'rectangular';
+  let colorDropdownOpen = false;
 
   // 专业生信配色方案 - 基于科研期刊标准
   const colorSchemes = [
@@ -96,33 +97,32 @@
   };
 </script>
 
-<div class="bg-gray-800 p-3 rounded-lg shadow-md">
-  <h3 class="text-sm font-medium text-gray-300 mb-3">树控制</h3>
+<div class="space-y-3">
   
   <!-- 布局选择 -->
-  <div class="mb-4">
-    <label class="block text-xs text-gray-400 mb-1">布局</label>
+  <div>
+    <div class="text-[11px] text-gray-400 mb-1">布局</div>
     <div class="grid grid-cols-2 gap-2">
       <button
-        class="text-xs text-white py-1 px-2 rounded {currentLayout === 'rectangular' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}"
+        class="text-xs text-white py-1.5 px-2 rounded {currentLayout === 'rectangular' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}"
         on:click={() => changeLayout('rectangular')}
       >
         矩形
       </button>
       <button
-        class="text-xs text-white py-1 px-2 rounded {currentLayout === 'circular' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}"
+        class="text-xs text-white py-1.5 px-2 rounded {currentLayout === 'circular' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}"
         on:click={() => changeLayout('circular')}
       >
         圆形
       </button>
       <button
-        class="text-xs text-white py-1 px-2 rounded {currentLayout === 'radial' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}"
+        class="text-xs text-white py-1.5 px-2 rounded {currentLayout === 'radial' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}"
         on:click={() => changeLayout('radial')}
       >
         径向
       </button>
       <button
-        class="text-xs text-white py-1 px-2 rounded {currentLayout === 'unrooted' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}"
+        class="text-xs text-white py-1.5 px-2 rounded {currentLayout === 'unrooted' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}"
         on:click={() => changeLayout('unrooted')}
       >
         无根
@@ -131,23 +131,23 @@
   </div>
 
   <!-- 缩放控制 -->
-  <div class="mb-4">
-    <label class="block text-xs text-gray-400 mb-1">缩放</label>
+  <div>
+    <div class="text-[11px] text-gray-400 mb-1">缩放</div>
     <div class="flex gap-2">
       <button
-        class="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-1 px-2 rounded text-xs"
+        class="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-2 rounded text-xs"
         on:click={zoomIn}
       >
         放大
       </button>
       <button
-        class="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-1 px-2 rounded text-xs"
+        class="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-2 rounded text-xs"
         on:click={zoomOut}
       >
         缩小
       </button>
       <button
-        class="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-1 px-2 rounded text-xs"
+        class="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-2 rounded text-xs"
         on:click={resetView}
       >
         重置
@@ -158,18 +158,18 @@
 
 
   <!-- 树枝配色 -->
-  <div class="mb-4">
-    <label class="block text-xs text-gray-400 mb-1">树枝配色（科研色系）</label>
+  <div>
+    <div class="text-[11px] text-gray-400 mb-1">树枝配色（科研色系）</div>
     <div class="grid grid-cols-2 gap-2 mb-2">
       <button
-        class="text-xs bg-gray-700 hover:bg-gray-600 text-white py-1 px-2 rounded border border-gray-600 text-left"
+        class="text-xs bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-2 rounded border border-gray-600 text-left"
         style="opacity: {branchColorMode === 'clade' ? 1 : 0.6}"
         on:click={() => setBranchColorMode('clade')}
       >
         分组配色
       </button>
       <button
-        class="text-xs bg-gray-700 hover:bg-gray-600 text-white py-1 px-2 rounded border border-gray-600 text-left"
+        class="text-xs bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-2 rounded border border-gray-600 text-left"
         style="opacity: {branchColorMode === 'single' ? 1 : 0.6}"
         on:click={() => setBranchColorMode('single')}
       >
@@ -180,21 +180,18 @@
       <!-- 自定义下拉组件，支持颜色预览 -->
       <div class="relative">
         <button
-          class="w-full text-xs bg-gray-700 text-gray-300 rounded p-1 border border-gray-600 text-left flex justify-between items-center"
+          class="w-full text-xs bg-gray-700 text-gray-300 rounded p-1.5 border border-gray-600 text-left flex justify-between items-center"
           on:click={() => {
-            const dropdown = document.getElementById('colorSchemeDropdown');
-            if (dropdown) {
-              dropdown.classList.toggle('hidden');
-            }
+            colorDropdownOpen = !colorDropdownOpen;
           }}
         >
           <div class="flex items-center gap-2">
             <div class="w-16 h-4 rounded overflow-hidden">
               {#each colorSchemes.find(s => s.base === branchColor)?.colors.slice(0, 8) || [] as color}
-                <div 
+                <div
                   class="inline-block w-2 h-4" 
                   style="background-color: {color}"
-                />
+                ></div>
               {/each}
             </div>
             <span>{colorSchemes.find(s => s.base === branchColor)?.name || '选择色系'}</span>
@@ -204,33 +201,31 @@
           </svg>
         </button>
         <!-- 下拉菜单 -->
-        <div 
-          id="colorSchemeDropdown"
-          class="hidden absolute top-full left-0 right-0 mt-1 bg-gray-800 rounded border border-gray-600 shadow-lg z-10 max-h-60 overflow-y-auto"
-        >
+        {#if colorDropdownOpen}
+          <div
+            class="absolute top-full left-0 right-0 mt-1 bg-gray-800 rounded border border-gray-600 shadow-lg z-10 max-h-60 overflow-y-auto"
+          >
           {#each colorSchemes as scheme}
             <button
               class="w-full text-xs text-left p-2 hover:bg-gray-700 flex items-center gap-2"
               on:click={() => {
                 setBranchColor(scheme.base);
-                const dropdown = document.getElementById('colorSchemeDropdown');
-                if (dropdown) {
-                  dropdown.classList.add('hidden');
-                }
+                colorDropdownOpen = false;
               }}
             >
               <div class="w-16 h-4 rounded overflow-hidden flex">
                 {#each scheme.colors.slice(0, 8) as color}
-                  <div 
+                  <div
                     class="flex-1" 
                     style="background-color: {color}"
-                  />
+                  ></div>
                 {/each}
               </div>
               <span>{scheme.name}</span>
             </button>
           {/each}
-        </div>
+          </div>
+        {/if}
       </div>
     </div>
     <div class="flex items-center gap-2">
@@ -245,10 +240,10 @@
   </div>
 
   <!-- 渲染模式 -->
-  <div class="mb-4">
-    <label class="block text-xs text-gray-400 mb-1">渲染模式</label>
+  <div>
+    <div class="text-[11px] text-gray-400 mb-1">渲染模式</div>
     <button
-      class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1 px-2 rounded text-xs"
+      class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-2 rounded text-xs"
       on:click={toggleRenderMode}
     >
       {renderMode === 'svg' ? '切换到Canvas' : '切换到SVG'}
@@ -257,9 +252,9 @@
 
   <!-- 标签显示 -->
   <div>
-    <label class="block text-xs text-gray-400 mb-1">标签显示</label>
+    <div class="text-[11px] text-gray-400 mb-1">标签显示</div>
     <button
-      class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1 px-2 rounded text-xs"
+      class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-2 rounded text-xs"
       on:click={toggleLabels}
     >
       {showLabels ? '隐藏标签' : '显示标签'}

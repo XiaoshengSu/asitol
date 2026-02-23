@@ -38,15 +38,13 @@
   };
 </script>
 
-<div class="bg-gray-800 p-3 rounded-lg shadow-md">
-  <h3 class="text-sm font-medium text-gray-300 mb-3">图层管理</h3>
-  
+<div>
   {#if layers.length === 0}
     <p class="text-xs text-gray-400">暂无图层</p>
   {:else}
     <div class="space-y-2">
       {#each layers as layer}
-        <div class="bg-gray-700 p-2 rounded flex items-center justify-between">
+        <div class="bg-gray-700/80 p-2 rounded flex items-center justify-between gap-2">
           <div class="flex items-center gap-2">
             <input
               type="checkbox"
@@ -54,7 +52,7 @@
               checked={layer.visible}
               on:change={() => toggleLayerVisibility(layer.id)}
             />
-            <span class="text-xs text-gray-300">{layer.name}</span>
+            <span class="text-xs text-gray-300 truncate max-w-[126px]">{layer.name}</span>
             <span class="text-xs text-gray-500">({layer.type})</span>
           </div>
           <div class="flex items-center gap-1">

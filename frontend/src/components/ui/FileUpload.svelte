@@ -277,21 +277,18 @@
   };
 </script>
 
-<div class="bg-gray-800 p-3 rounded-lg shadow-md space-y-3">
-  <div class="flex items-center justify-between">
-    <h3 class="text-sm font-medium text-gray-300">导入数据</h3>
-    <span class="text-[10px] text-gray-400">{uploadType === 'tree' ? 'Newick' : 'JSON'}</span>
-  </div>
+<div class="space-y-2.5">
+  <div class="text-[10px] text-gray-400">{uploadType === 'tree' ? 'Newick' : 'JSON'}</div>
 
   <div class="grid grid-cols-2 gap-2 rounded bg-gray-900 p-1">
     <button
-      class={`text-xs py-1.5 rounded ${uploadType === 'tree' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
+      class={`text-xs py-1.5 rounded ${uploadType === 'tree' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700/80'}`}
       on:click={() => switchUploadType('tree')}
     >
       树文件
     </button>
     <button
-      class={`text-xs py-1.5 rounded ${uploadType === 'annotation' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
+      class={`text-xs py-1.5 rounded ${uploadType === 'annotation' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700/80'}`}
       on:click={() => switchUploadType('annotation')}
     >
       注释文件
