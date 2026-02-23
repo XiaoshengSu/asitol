@@ -20,7 +20,7 @@ class RectangularLayout implements LayoutAlgorithm {
     // 计算节点间距，根据容器大小自适应调整
     // 确保树的高度不会超出容器，同时为标签预留足够空间
     const safePadding = Math.max(8, padding);
-    const rightLabelSpace = 170;
+    const rightLabelSpace = this.estimateRightLabelSpace(tree.root, width);
     const availableHeight = Math.max(1, height - 2 * safePadding);
     const availableWidth = Math.max(1, width - 2 * safePadding - rightLabelSpace);
     // 根据容器高度和树的高度自适应调整Y轴间距
@@ -42,6 +42,30 @@ class RectangularLayout implements LayoutAlgorithm {
       nodes,
       links
     };
+  }
+
+  private estimateRightLabelSpace(root: TreeNode, canvasWidth: number): number {
+    let maxLeafNameLength = 0;
+    this.walkLeaves(root, leaf => {
+      maxLeafNameLength = Math.max(maxLeafNameLength, (leaf.name || '').length);
+    });
+
+    // Rough text width estimate: ~7px per character + margin for node/branch offsets.
+    const estimated = 44 + maxLeafNameLength * 7;
+    const minSpace = 140;
+    const maxSpace = Math.max(220, Math.floor(canvasWidth * 0.45));
+    return Math.min(maxSpace, Math.max(minSpace, estimated));
+  }
+
+  private walkLeaves(node: TreeNode, onLeaf: (leaf: TreeNode) => void): void {
+    if (!node.children || node.children.length === 0) {
+      onLeaf(node);
+      return;
+    }
+
+    for (const child of node.children) {
+      this.walkLeaves(child, onLeaf);
+    }
   }
 
   private calculateTreeHeight(node: TreeNode): number {

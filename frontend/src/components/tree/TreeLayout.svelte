@@ -10,6 +10,8 @@
     layoutComputed: LayoutResult;
   }>();
 
+  export let viewportEl: HTMLElement | null = null;
+
   let tree: Tree | null = null;
   let layoutConfig: LayoutConfig = {
     type: 'rectangular',
@@ -20,20 +22,19 @@
     branchWidth: 1
   };
   let resizeTimer: number | null = null;
-
-  const SIDEBAR_WIDTH = 256;
-  const HEADER_HEIGHT = 44;
+  let viewportResizeObserver: ResizeObserver | null = null;
   const getCanvasViewport = () => {
-    if (typeof window === 'undefined') {
+    if (viewportEl) {
+      const { width, height } = viewportEl.getBoundingClientRect();
       return {
-        width: layoutConfig.width || 800,
-        height: layoutConfig.height || 600
+        width: Math.max(320, Math.floor(width)),
+        height: Math.max(260, Math.floor(height))
       };
     }
 
     return {
-      width: Math.max(320, window.innerWidth - SIDEBAR_WIDTH),
-      height: Math.max(260, window.innerHeight - HEADER_HEIGHT)
+      width: layoutConfig.width || 800,
+      height: layoutConfig.height || 600
     };
   };
 
@@ -112,10 +113,32 @@
     }, 120);
   };
 
+  const observeViewportResize = () => {
+    if (typeof window === 'undefined' || typeof ResizeObserver === 'undefined') return;
+
+    if (viewportResizeObserver) {
+      viewportResizeObserver.disconnect();
+      viewportResizeObserver = null;
+    }
+
+    if (!viewportEl) return;
+
+    viewportResizeObserver = new ResizeObserver(() => {
+      handleResize();
+    });
+    viewportResizeObserver.observe(viewportEl);
+  };
+
+  $: if (viewportEl) {
+    observeViewportResize();
+  }
+
   onMount(() => {
     if (tree) {
       computeLayout();
     }
+
+    observeViewportResize();
 
     if (typeof window !== 'undefined') {
       window.addEventListener('resize', handleResize);
@@ -128,6 +151,10 @@
     }
     if (resizeTimer) {
       clearTimeout(resizeTimer);
+    }
+    if (viewportResizeObserver) {
+      viewportResizeObserver.disconnect();
+      viewportResizeObserver = null;
     }
     unsubscribe();
   });

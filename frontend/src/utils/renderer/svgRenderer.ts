@@ -134,7 +134,7 @@ export class SVGRenderer {
           if (isTargetLeaf) {
             // 对于叶节点，确保有一个水平向右的线段
             // 计算水平线段的终点x坐标，确保朝右
-            const horizontalEndX = Math.max(source.x, target.x) + 30; // 额外增加30px，确保有足够空间显示标签
+            const horizontalEndX = Math.max(source.x, target.x) + 18; // 轻量右延，避免矩形树整体外溢
             return `M ${source.x} ${source.y} L ${target.x} ${source.y} L ${target.x} ${target.y} L ${horizontalEndX} ${target.y}`;
           } else {
             // 对于非叶节点，使用正常的直角分叉
@@ -327,7 +327,7 @@ export class SVGRenderer {
             return x + offset * ux;
           } else if (layoutResult.type === 'rectangular') {
             // 对于矩形树，将标签放在分支末端右侧
-            return d[1].x + 35; // 额外增加35px，确保标签在分支末端右侧
+            return d[1].x + 22; // 保持标签与分支间隔，同时减少越界风险
           }
           return d[1].x + 8;
         })
@@ -424,7 +424,7 @@ export class SVGRenderer {
           if (isTargetLeaf) {
             // 对于叶节点，确保有一个水平向右的线段
             // 计算水平线段的终点x坐标，确保朝右
-            const horizontalEndX = Math.max(source.x, target.x) + 30; // 额外增加30px，确保有足够空间显示标签
+            const horizontalEndX = Math.max(source.x, target.x) + 18; // 轻量右延，避免矩形树整体外溢
             return `M ${source.x} ${source.y} L ${target.x} ${source.y} L ${target.x} ${target.y} L ${horizontalEndX} ${target.y}`;
           } else {
             // 对于非叶节点，使用正常的直角分叉

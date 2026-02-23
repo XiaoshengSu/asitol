@@ -11,6 +11,7 @@
   import type { RenderMode } from '../../types/layout';
 
   let exportDialog: any;
+  let viewportEl: HTMLElement | null = null;
   let renderMode: RenderMode = 'svg';
 
   // 打开导出对话框
@@ -84,8 +85,8 @@
     </aside>
 
     <!-- 中央画布 -->
-    <section class="flex-1 relative">
-      <TreeLayout />
+    <section bind:this={viewportEl} class="flex-1 relative">
+      <TreeLayout {viewportEl} />
       {#if renderMode === 'svg'}
         <TreeSvg />
       {:else}

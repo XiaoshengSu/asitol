@@ -30,6 +30,19 @@ const createUIStore = () => {
     branchColorMode: 'clade'
   });
 
+  const getLongestLeafNameLength = (node: any): number => {
+    if (!node) return 0;
+    if (!node.children || node.children.length === 0) {
+      return (node.name || '').length;
+    }
+
+    let maxLength = 0;
+    for (const child of node.children) {
+      maxLength = Math.max(maxLength, getLongestLeafNameLength(child));
+    }
+    return maxLength;
+  };
+
   return {
     subscribe,
     // 更新渲染模式
@@ -81,26 +94,52 @@ const createUIStore = () => {
       treeStore.calculateTreeBounds();
       
       // 获取当前树的状态
-      let treeState;
+      let treeState: any;
       treeStore.subscribe(state => treeState = state)();
       
       // 计算居中位置
-      let panX = 100;
-      let panY = 100;
+      let panX = 0;
+      let panY = 0;
+      let zoom = 1;
       
-      if (treeState?.layoutResult?.bounds) {
+      if (treeState?.layoutResult?.bounds && treeState?.layoutConfig) {
         const { bounds } = treeState.layoutResult;
-        const canvasWidth = treeState.layoutConfig.width;
-        const canvasHeight = treeState.layoutConfig.height;
+        const canvasWidth = Math.max(1, treeState.layoutConfig.width || 800);
+        const canvasHeight = Math.max(1, treeState.layoutConfig.height || 600);
+        const isRectangular = treeState.layoutConfig.type === 'rectangular';
+
+        let leftExtra = 24;
+        let rightExtra = 24;
+        let topExtra = 24;
+        let bottomExtra = 24;
+
+        if (isRectangular) {
+          const longestLeafName = getLongestLeafNameLength(treeState?.tree?.root);
+          rightExtra = Math.min(420, Math.max(180, 44 + longestLeafName * 7));
+          leftExtra = 16;
+          topExtra = 20;
+          bottomExtra = 20;
+        }
+
+        const contentWidth = Math.max(1, bounds.width + leftExtra + rightExtra);
+        const contentHeight = Math.max(1, bounds.height + topExtra + bottomExtra);
+        const fitScaleX = canvasWidth / contentWidth;
+        const fitScaleY = canvasHeight / contentHeight;
+        zoom = Math.min(1, fitScaleX, fitScaleY) * 0.98;
+
+        const contentMinX = bounds.minX - leftExtra;
+        const contentMinY = bounds.minY - topExtra;
+        const contentCenterX = contentMinX + contentWidth / 2;
+        const contentCenterY = contentMinY + contentHeight / 2;
         
         // 计算居中的平移值
-        panX = (canvasWidth - bounds.width) / 2 - bounds.minX;
-        panY = (canvasHeight - bounds.height) / 2 - bounds.minY;
+        panX = canvasWidth / 2 - contentCenterX * zoom;
+        panY = canvasHeight / 2 - contentCenterY * zoom;
       }
       
       return update(state => ({ 
         ...state, 
-        zoom: 1, 
+        zoom, 
         pan: { x: panX, y: panY }
       }));
     },
