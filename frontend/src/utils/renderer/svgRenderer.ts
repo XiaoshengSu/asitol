@@ -870,9 +870,9 @@ export class SVGRenderer {
     const { cx: treeCx, cy: treeCy } = this.computeTreeCenter();
     // ─────────────────────────────────────────────────────────────────────────
 
-    // Maximum distance from tree center to any node (= visual radius of the tree)
+    // Maximum distance from tree center to any leaf node (= visual radius of the tree)
     let treeMaxRadius = 0;
-    Object.values(this.nodes || {}).forEach(pos => {
+    Object.entries(this.nodes || {}).forEach(([id, pos]) => {
       if (pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
         const r = Math.hypot(pos.x - treeCx, pos.y - treeCy);
         treeMaxRadius = Math.max(treeMaxRadius, r);
@@ -880,8 +880,45 @@ export class SVGRenderer {
     });
     treeMaxRadius = Math.max(50, treeMaxRadius);
 
-    // The annotation ring sits just outside the outermost leaf nodes
-    const ringRadius = treeMaxRadius + 30 + layerOffset;
+    // ── Label clearance ────────────────────────────────────────────────────────
+    // Leaf labels are rendered radially outward from each leaf node.
+    // To avoid the annotation ring occluding them, we estimate the radial space
+    // consumed by the longest label and add it as a mandatory gap.
+    //
+    // Estimation strategy:
+    //   • font size for circular layouts is 8–10 px (see getCircularLabelFontSize).
+    //     We use 9 px as the average character width multiplier (≈ 0.55 × font-size
+    //     for a proportional font, giving ~5 px/char), which is conservative enough
+    //     to work for both dense and sparse trees.
+    //   • We only consider leaf nodes that actually have labels (non-empty name).
+    //   • The result is clamped to a reasonable range so tiny or huge trees don't
+    //     produce absurd offsets.
+    const showLabels = this.getShowLabels();
+    let labelRadialClearance = 0;
+    if (showLabels) {
+      const LABEL_OFFSET_PX = this.getCircularLabelOffset(Object.keys(this.nodes || {}).length > 500);
+      const CHAR_WIDTH_PX   = 5.2;   // empirical: ~0.55 × 9.5 px avg font size
+      const LABEL_GAP_PX    = 6;     // breathing room between label tail and ring inner edge
+
+      let maxLabelLen = 0;
+      this.leafNodeIdSet.forEach(id => {
+        const name = this.nodeNameById.get(id) || '';
+        if (name.length > maxLabelLen) maxLabelLen = name.length;
+      });
+
+      const estimatedLabelWidth = maxLabelLen * CHAR_WIDTH_PX;
+      labelRadialClearance = this.clamp(
+        LABEL_OFFSET_PX + estimatedLabelWidth + LABEL_GAP_PX,
+        16,   // minimum: even with no visible labels keep a small gap
+        220   // maximum: guard against pathologically long taxon names
+      );
+    } else {
+      labelRadialClearance = 16; // no labels → minimal gap
+    }
+    // ──────────────────────────────────────────────────────────────────────────
+
+    // The annotation ring sits outside treeMaxRadius + label clearance
+    const ringRadius = treeMaxRadius + labelRadialClearance + layerOffset;
 
     // Title at the top of the ring (angle = −90° = top)
     const titleRadius = ringRadius + trackWidth / 2 + 10;
