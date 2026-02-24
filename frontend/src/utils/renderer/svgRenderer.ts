@@ -271,16 +271,6 @@ export class SVGRenderer {
       .attr('class', 'node')
       .attr('data-node-id', d => d[0])
       .attr('cx', d => {
-        // 对于矩形树的叶节点，将交互圆点放在分支线的最后
-        if (layoutResult.type === 'rectangular') {
-          const isLeaf = leafNodeIds.has(d[0]);
-          if (isLeaf) {
-            const source = layoutResult.nodes[findNodeById(tree.root, d[0])?.parent.id];
-            if (source) {
-              return Math.max(source.x, d[1].x) + 18;
-            }
-          }
-        }
         return d[1].x;
       })
       .attr('cy', d => d[1].y)
@@ -514,16 +504,6 @@ export class SVGRenderer {
       .attr('class', 'node')
       .attr('data-node-id', d => d[0])
       .attr('cx', d => {
-        // 对于矩形树的叶节点，将交互圆点放在分支线的最后
-        if (layoutResult.type === 'rectangular') {
-          const isLeaf = leafNodeIds.has(d[0]);
-          if (isLeaf) {
-            const source = layoutResult.nodes[findNodeById(tree.root, d[0])?.parent.id];
-            if (source) {
-              return Math.max(source.x, d[1].x) + 18;
-            }
-          }
-        }
         return d[1].x;
       })
       .attr('cy', d => d[1].y)
@@ -815,9 +795,9 @@ export class SVGRenderer {
     let minWidth = baseBranchWidth * 0.5;
     let maxWidth = baseBranchWidth * 2;
 
-    // 圆形/径向树中主干层级感更重要：加粗靠近根节点的分支，
+    // 圆形/径向/无根树中主干层级感更重要：加粗靠近根节点的分支，
     // 同时降低末端分支宽度，提升根分支与末端分支可辨识度。
-    if (layoutType === 'circular' || layoutType === 'radial') {
+    if (layoutType === 'circular' || layoutType === 'radial' || layoutType === 'unrooted') {
       minWidth = baseBranchWidth * 0.4;
       maxWidth = baseBranchWidth * 2.8;
     }
