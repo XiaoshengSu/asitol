@@ -107,8 +107,11 @@ class RectangularLayout implements LayoutAlgorithm {
     let currentY = y - (totalHeight - 1) * yStep / 2;
     for (let i = 0; i < node.children.length; i++) {
       const child = node.children[i];
+      const subtreeHeight = childHeights[i];
+      const childCenterY = currentY + (subtreeHeight - 1) * yStep / 2;
+
       links.push({ source: node.id, target: child.id });
-      const subtreeHeight = this.layoutNode(child, x + xStep, currentY, xStep, yStep, nodes, links);
+      this.layoutNode(child, x + xStep, childCenterY, xStep, yStep, nodes, links);
       currentY += subtreeHeight * yStep;
     }
 
