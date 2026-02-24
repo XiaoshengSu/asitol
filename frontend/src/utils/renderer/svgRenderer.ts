@@ -270,7 +270,19 @@ export class SVGRenderer {
       .append('circle')
       .attr('class', 'node')
       .attr('data-node-id', d => d[0])
-      .attr('cx', d => d[1].x)
+      .attr('cx', d => {
+        // 对于矩形树的叶节点，将交互圆点放在分支线的最后
+        if (layoutResult.type === 'rectangular') {
+          const isLeaf = leafNodeIds.has(d[0]);
+          if (isLeaf) {
+            const source = layoutResult.nodes[findNodeById(tree.root, d[0])?.parent.id];
+            if (source) {
+              return Math.max(source.x, d[1].x) + 18;
+            }
+          }
+        }
+        return d[1].x;
+      })
       .attr('cy', d => d[1].y)
       .attr('r', nodeSize)
       .attr('fill', config.nodeColor || '#fff')
@@ -501,7 +513,19 @@ export class SVGRenderer {
       .append('circle')
       .attr('class', 'node')
       .attr('data-node-id', d => d[0])
-      .attr('cx', d => d[1].x)
+      .attr('cx', d => {
+        // 对于矩形树的叶节点，将交互圆点放在分支线的最后
+        if (layoutResult.type === 'rectangular') {
+          const isLeaf = leafNodeIds.has(d[0]);
+          if (isLeaf) {
+            const source = layoutResult.nodes[findNodeById(tree.root, d[0])?.parent.id];
+            if (source) {
+              return Math.max(source.x, d[1].x) + 18;
+            }
+          }
+        }
+        return d[1].x;
+      })
       .attr('cy', d => d[1].y)
       .attr('r', largeNodeSize)
       .attr('fill', config.nodeColor || '#fff')

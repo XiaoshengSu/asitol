@@ -277,7 +277,7 @@
 
     return {
       id: AUTO_ANNOTATION_ID,
-      name: '默认注释-标签分组色带',
+      name: '注释分组色带',
       type: 'COLORSTRIP',
       data: Object.fromEntries(
         leafProfiles.map(item => {

@@ -340,7 +340,7 @@
     unsubscribeTree();
   });
 </script>
-
+{#if layers.filter(layer => layer.visible).length > 0}
 <div bind:this={overlayEl} class="absolute inset-0 z-20 pointer-events-none">
   <div
     bind:this={panelEl}
@@ -356,10 +356,8 @@
       title="拖拽移动图例"
     ></div>
 
-    <div class="max-h-[62vh] overflow-auto p-3 space-y-3">
-      {#if layers.filter(layer => layer.visible).length === 0}
-        <div class={`text-xs ${theme === 'light' ? 'text-slate-500' : 'text-gray-400'}`}>暂无可见图例</div>
-      {:else}
+    
+      <div class="max-h-[62vh] overflow-auto p-3 space-y-3">
         {#each layers.filter(layer => layer.visible) as layer}
           {@const rows = getLayerRows(layer)}
           {@const pageRows = getPagedRows(rows)}
@@ -395,7 +393,7 @@
             {/if}
           </section>
         {/each}
-      {/if}
+      </div>
     </div>
   </div>
-</div>
+{/if}
