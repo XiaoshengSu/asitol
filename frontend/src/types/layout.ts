@@ -12,7 +12,7 @@ export interface LayoutAlgorithm {
 }
 
 // 渲染模式类型
-export type RenderMode = 'svg' | 'canvas';
+export type RenderMode = 'svg';
 
 // 渲染配置类型
 export interface RenderConfig {

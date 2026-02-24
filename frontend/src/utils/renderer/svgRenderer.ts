@@ -63,7 +63,11 @@ export class SVGRenderer {
   }
 
   private doRender(tree: Tree, layoutResult: LayoutResult, config: RenderConfig): void {
+    // Clear all elements in this.g (tree elements)
     this.g.selectAll('*').remove();
+    
+    // Clear all annotation layers in SVG root
+    this.svg.selectAll('.annotation-layer').remove();
 
     const centerX = config.width / 2;
     const centerY = config.height / 2;
@@ -622,6 +626,8 @@ export class SVGRenderer {
 
   resize(width: number, height: number): void {
     this.svg.attr('width', width).attr('height', height);
+    // Update viewBox to match new size
+    this.svg.attr('viewBox', `0 0 ${width} ${height}`);
   }
 
   /**
@@ -762,7 +768,9 @@ export class SVGRenderer {
       const annotation = layer.data;
       if (!annotation) return;
 
-      const layerGroup = this.g.append('g')
+      // Add annotation layers to SVG root instead of this.g
+      // This ensures annotations are not affected by zoom/pan transforms
+      const layerGroup = this.svg.append('g')
         .attr('class', `annotation-layer layer-${index}`)
         .attr('data-layer-id', layer.id)
         .attr('opacity', this.clamp(Number(annotation.config?.opacity ?? 1), 0.35, 1));
@@ -904,6 +912,8 @@ export class SVGRenderer {
     if (rows.length === 0) return;
 
     // Calculate tree actual center based on all nodes positions
+    // This is more reliable than using container center because
+    // layout may be calculated with different dimensions than rendering
     let sumX = 0;
     let sumY = 0;
     let nodeCount = 0;
@@ -920,6 +930,29 @@ export class SVGRenderer {
     // Calculate tree center
     const treeCenterX = nodeCount > 0 ? sumX / nodeCount : config.width / 2;
     const treeCenterY = nodeCount > 0 ? sumY / nodeCount : config.height / 2;
+    
+    // Log center positions for debugging
+    console.log('=== Circular Annotation Ring Debug ===');
+    console.log('Calculated tree center:', { x: treeCenterX, y: treeCenterY });
+    console.log('Container center:', { x: config.width / 2, y: config.height / 2 });
+    console.log('Config width/height:', { width: config.width, height: config.height });
+    
+    // Calculate and log tree bounding box center
+    if (this.nodes && Object.keys(this.nodes).length > 0) {
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      Object.entries(this.nodes).forEach(([_, pos]) => {
+        if (pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
+          minX = Math.min(minX, pos.x);
+          maxX = Math.max(maxX, pos.x);
+          minY = Math.min(minY, pos.y);
+          maxY = Math.max(maxY, pos.y);
+        }
+      });
+      const bboxCenterX = (minX + maxX) / 2;
+      const bboxCenterY = (minY + maxY) / 2;
+      console.log('Tree bounding box center:', { x: bboxCenterX, y: bboxCenterY });
+      console.log('Tree bounding box:', { minX, maxX, minY, maxY });
+    }
     
     // Calculate tree maximum radius based on distance from tree center to farthest node
     let treeMaxRadius = 0;

@@ -5,7 +5,6 @@ import { treeStore } from './treeStore';
 // 创建界面状态存储
 const createUIStore = () => {
   const { subscribe, set, update } = writable<{
-    renderMode: RenderMode;
     sidebarVisible: boolean;
     layersPanelVisible: boolean;
     propertiesPanelVisible: boolean;
@@ -20,7 +19,6 @@ const createUIStore = () => {
     branchColor: string;
     branchColorMode: 'single' | 'clade';
   }>({
-    renderMode: 'svg',
     sidebarVisible: true,
     layersPanelVisible: true,
     propertiesPanelVisible: false,
@@ -51,13 +49,7 @@ const createUIStore = () => {
 
   return {
     subscribe,
-    // 更新渲染模式
-    setRenderMode: (mode: RenderMode | ((currentMode: RenderMode) => RenderMode)) => update(state => {
-      if (typeof mode === 'function') {
-        return { ...state, renderMode: mode(state.renderMode) };
-      }
-      return { ...state, renderMode: mode };
-    }),
+
     // 切换侧边栏可见性
     toggleSidebar: () => update(state => ({ ...state, sidebarVisible: !state.sidebarVisible })),
     // 切换图层面板可见性
@@ -210,7 +202,6 @@ const createUIStore = () => {
     setBranchColorMode: (mode: 'single' | 'clade') => update(state => ({ ...state, branchColorMode: mode })),
     // 重置状态
     reset: () => set({
-      renderMode: 'svg',
       sidebarVisible: true,
       layersPanelVisible: true,
       propertiesPanelVisible: false,

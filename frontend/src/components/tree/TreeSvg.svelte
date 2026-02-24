@@ -15,7 +15,7 @@
   let renderer: any = null;
   let tree: Tree | null = null;
   let layoutResult: LayoutResult | null = null;
-  let renderMode: 'svg' | 'canvas' = 'svg';
+  const renderMode: 'svg' = 'svg';
   let zoom: number = 1;
   let pan: { x: number; y: number } = { x: 0, y: 0 };
   let branchColor = '#8f96a3';
@@ -35,20 +35,18 @@
 
   // 订阅UI状态
   const unsubscribeUI = uiStore.subscribe($uiStore => {
-    const oldRenderMode = renderMode;
     const oldBranchColor = branchColor;
     const oldBranchColorMode = branchColorMode;
     
-    renderMode = $uiStore.renderMode;
     zoom = $uiStore.zoom;
     pan = $uiStore.pan;
     branchColor = $uiStore.branchColor;
     branchColorMode = $uiStore.branchColorMode;
     
-    // 只在渲染模式或分支颜色变化时重新渲染树
+    // 只在分支颜色变化时重新渲染树
     // 缩放和平移只更新变换，不重新渲染
     if (renderer && tree && layoutResult) {
-      if (oldRenderMode !== renderMode || oldBranchColor !== branchColor || oldBranchColorMode !== branchColorMode) {
+      if (oldBranchColor !== branchColor || oldBranchColorMode !== branchColorMode) {
         render();
       } else {
         updateTransform();

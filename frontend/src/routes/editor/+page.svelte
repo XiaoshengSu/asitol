@@ -1,7 +1,6 @@
 <script lang="ts">
   import TreeLayout from '../../components/tree/TreeLayout.svelte';
   import TreeSvg from '../../components/tree/TreeSvg.svelte';
-  import TreeCanvas from '../../components/tree/TreeCanvas.svelte';
   import TreeControls from '../../components/tree/TreeControls.svelte';
   import LayerManager from '../../components/annotation/LayerManager.svelte';
   import AnnotationLegendLayer from '../../components/annotation/AnnotationLegendLayer.svelte';

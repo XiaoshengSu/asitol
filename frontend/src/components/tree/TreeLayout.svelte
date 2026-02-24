@@ -89,11 +89,7 @@
       treeStore.calculateTreeBounds();
       uiStore.resetView();
       
-      // 根据树的大小自动切换渲染模式
-      if (nodeCount > 1000) {
-        uiStore.setRenderMode('canvas');
-        dispatch('renderModeChange', 'canvas');
-      }
+
       
       dispatch('layoutComputed', result);
     } catch (error) {

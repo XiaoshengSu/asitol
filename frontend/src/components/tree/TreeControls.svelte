@@ -6,7 +6,7 @@
 
   const dispatch = createEventDispatcher<{
     layoutChange: LayoutType;
-    renderModeChange: 'svg' | 'canvas';
+
   }>();
 
   // 反应式变量来跟踪UI状态
@@ -66,15 +66,7 @@
     uiStore.resetView();
   };
 
-  // 切换渲染模式
-  const toggleRenderMode = () => {
-    // 使用update方法来更新渲染模式
-    uiStore.setRenderMode((mode: 'svg' | 'canvas') => {
-      const newMode = mode === 'svg' ? 'canvas' : 'svg';
-      dispatch('renderModeChange', newMode);
-      return newMode;
-    });
-  };
+
 
   // 切换标签显示
   const toggleLabels = () => {
@@ -239,16 +231,7 @@
     </div>
   </div>
 
-  <!-- 渲染模式 -->
-  <div>
-    <div class="text-[11px] text-gray-400 mb-1">渲染模式</div>
-    <button
-      class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-2 rounded text-xs"
-      on:click={toggleRenderMode}
-    >
-      {renderMode === 'svg' ? '切换到Canvas' : '切换到SVG'}
-    </button>
-  </div>
+
 
   <!-- 标签显示 -->
   <div>
