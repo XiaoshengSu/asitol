@@ -16,6 +16,7 @@
   let branchColorMode: 'single' | 'clade' = 'clade';
   let currentLayout: LayoutType = 'rectangular';
   let colorDropdownOpen = false;
+  let theme: 'dark' | 'light' = 'dark';
 
   // 专业生信配色方案 - 基于科研期刊标准
   const colorSchemes = [
@@ -42,6 +43,7 @@
     showLabels = $uiStore.showLabels;
     branchColor = $uiStore.branchColor;
     branchColorMode = $uiStore.branchColorMode;
+    theme = $uiStore.theme;
   });
 
   // 订阅树状态变化，获取当前布局类型
@@ -109,28 +111,28 @@
   
   <!-- 布局选择 -->
   <div>
-    <div class="text-[11px] text-gray-400 mb-1">布局</div>
+    <div class={`text-[11px] mb-1 ${theme === 'light' ? 'text-slate-500' : 'text-gray-400'}`}>布局</div>
     <div class="grid grid-cols-2 gap-2">
       <button
-        class="text-xs text-white py-1.5 px-2 rounded {currentLayout === 'rectangular' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}"
+        class={`text-xs py-1.5 px-2 rounded ${currentLayout === 'rectangular' ? 'bg-blue-600 text-white' : (theme === 'light' ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-gray-700 hover:bg-gray-600 text-white')}`}
         on:click={() => changeLayout('rectangular')}
       >
         矩形
       </button>
       <button
-        class="text-xs text-white py-1.5 px-2 rounded {currentLayout === 'circular' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}"
+        class={`text-xs py-1.5 px-2 rounded ${currentLayout === 'circular' ? 'bg-blue-600 text-white' : (theme === 'light' ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-gray-700 hover:bg-gray-600 text-white')}`}
         on:click={() => changeLayout('circular')}
       >
         圆形
       </button>
       <button
-        class="text-xs text-white py-1.5 px-2 rounded {currentLayout === 'radial' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}"
+        class={`text-xs py-1.5 px-2 rounded ${currentLayout === 'radial' ? 'bg-blue-600 text-white' : (theme === 'light' ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-gray-700 hover:bg-gray-600 text-white')}`}
         on:click={() => changeLayout('radial')}
       >
         径向
       </button>
       <button
-        class="text-xs text-white py-1.5 px-2 rounded {currentLayout === 'unrooted' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}"
+        class={`text-xs py-1.5 px-2 rounded ${currentLayout === 'unrooted' ? 'bg-blue-600 text-white' : (theme === 'light' ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-gray-700 hover:bg-gray-600 text-white')}`}
         on:click={() => changeLayout('unrooted')}
       >
         无根
@@ -140,22 +142,22 @@
 
   <!-- 缩放控制 -->
   <div>
-    <div class="text-[11px] text-gray-400 mb-1">缩放</div>
+    <div class={`text-[11px] mb-1 ${theme === 'light' ? 'text-slate-500' : 'text-gray-400'}`}>缩放</div>
     <div class="flex gap-2">
       <button
-        class="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-2 rounded text-xs"
+        class={`flex-1 py-1.5 px-2 rounded text-xs ${theme === 'light' ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-gray-700 hover:bg-gray-600 text-white'}`}
         on:click={zoomIn}
       >
         放大
       </button>
       <button
-        class="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-2 rounded text-xs"
+        class={`flex-1 py-1.5 px-2 rounded text-xs ${theme === 'light' ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-gray-700 hover:bg-gray-600 text-white'}`}
         on:click={zoomOut}
       >
         缩小
       </button>
       <button
-        class="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-2 rounded text-xs"
+        class={`flex-1 py-1.5 px-2 rounded text-xs ${theme === 'light' ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-gray-700 hover:bg-gray-600 text-white'}`}
         on:click={resetView}
       >
         重置
@@ -167,17 +169,17 @@
 
   <!-- 树枝配色 -->
   <div>
-    <div class="text-[11px] text-gray-400 mb-1">树枝配色（科研色系）</div>
+    <div class={`text-[11px] mb-1 ${theme === 'light' ? 'text-slate-500' : 'text-gray-400'}`}>树枝配色（科研色系）</div>
     <div class="grid grid-cols-2 gap-2 mb-2">
       <button
-        class="text-xs bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-2 rounded border border-gray-600 text-left"
+        class={`text-xs py-1.5 px-2 rounded border text-left ${theme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300' : 'bg-gray-700 hover:bg-gray-600 text-white border-gray-600'}`}
         style="opacity: {branchColorMode === 'clade' ? 1 : 0.6}"
         on:click={() => setBranchColorMode('clade')}
       >
         分组配色
       </button>
       <button
-        class="text-xs bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-2 rounded border border-gray-600 text-left"
+        class={`text-xs py-1.5 px-2 rounded border text-left ${theme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300' : 'bg-gray-700 hover:bg-gray-600 text-white border-gray-600'}`}
         style="opacity: {branchColorMode === 'single' ? 1 : 0.6}"
         on:click={() => setBranchColorMode('single')}
       >
@@ -188,7 +190,7 @@
       <!-- 自定义下拉组件，支持颜色预览 -->
       <div class="relative">
         <button
-          class="w-full text-xs bg-gray-700 text-gray-300 rounded p-1.5 border border-gray-600 text-left flex justify-between items-center"
+          class={`w-full text-xs rounded p-1.5 border text-left flex justify-between items-center ${theme === 'light' ? 'bg-white text-slate-700 border-slate-300' : 'bg-gray-700 text-gray-300 border-gray-600'}`}
           on:click={() => {
             colorDropdownOpen = !colorDropdownOpen;
           }}
@@ -211,11 +213,11 @@
         <!-- 下拉菜单 -->
         {#if colorDropdownOpen}
           <div
-            class="absolute top-full left-0 right-0 mt-1 bg-gray-800 rounded border border-gray-600 shadow-lg z-10 max-h-60 overflow-y-auto"
+            class={`absolute top-full left-0 right-0 mt-1 rounded border shadow-lg z-10 max-h-60 overflow-y-auto ${theme === 'light' ? 'bg-white border-slate-300' : 'bg-gray-800 border-gray-600'}`}
           >
           {#each colorSchemes as scheme}
             <button
-              class="w-full text-xs text-left p-2 hover:bg-gray-700 flex items-center gap-2"
+              class={`w-full text-xs text-left p-2 flex items-center gap-2 ${theme === 'light' ? 'text-slate-700 hover:bg-slate-100' : 'text-gray-200 hover:bg-gray-700'}`}
               on:click={() => {
                 setBranchColor(scheme.base);
                 colorDropdownOpen = false;
@@ -239,11 +241,11 @@
     <div class="flex items-center gap-2">
       <input
         type="color"
-        class="w-10 h-7 rounded bg-gray-700 border border-gray-600"
+        class={`w-10 h-7 rounded border ${theme === 'light' ? 'bg-white border-slate-300' : 'bg-gray-700 border-gray-600'}`}
         bind:value={branchColor}
         on:change={(e) => setBranchColor((e.currentTarget as HTMLInputElement).value)}
       />
-      <span class="text-[10px] text-gray-400 text-left">{branchColor}</span>
+      <span class={`text-[10px] text-left ${theme === 'light' ? 'text-slate-500' : 'text-gray-400'}`}>{branchColor}</span>
     </div>
   </div>
 
@@ -251,9 +253,9 @@
 
   <!-- 标签显示 -->
   <div>
-    <div class="text-[11px] text-gray-400 mb-1">标签显示</div>
+    <div class={`text-[11px] mb-1 ${theme === 'light' ? 'text-slate-500' : 'text-gray-400'}`}>标签显示</div>
     <button
-      class="w-full bg-gray-700 hover:bg-gray-600 text-white py-1.5 px-2 rounded text-xs"
+      class={`w-full py-1.5 px-2 rounded text-xs ${theme === 'light' ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-gray-700 hover:bg-gray-600 text-white'}`}
       on:click={toggleLabels}
     >
       {showLabels ? '隐藏标签' : '显示标签'}
