@@ -311,12 +311,14 @@
   const selectLegendRow = (row: LegendRow) => {
     if (!row.nodeIds.length) return;
     const ids = [...new Set(row.nodeIds)];
+    uiStore.setSelectionHighlightColor(row.color);
     if (ids.length === 1) {
       uiStore.selectNode(ids[0]);
       return;
     }
     uiStore.clearSelection();
     ids.forEach((id, index) => uiStore.selectNode(id, index > 0));
+    uiStore.setSelectionHighlightColor(row.color);
   };
 
   onMount(() => {

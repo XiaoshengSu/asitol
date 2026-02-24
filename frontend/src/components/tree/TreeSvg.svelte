@@ -22,6 +22,7 @@
   let branchColorMode: 'single' | 'clade' = 'clade';
   let theme: 'dark' | 'light' = 'dark';
   let isDragging: boolean = false;
+  let selectedNodeSignature = '';
   let lastMouseX: number = 0;
   let lastMouseY: number = 0;
 
@@ -39,17 +40,21 @@
     const oldBranchColor = branchColor;
     const oldBranchColorMode = branchColorMode;
     const oldTheme = theme;
-    
+
     zoom = $uiStore.zoom;
     pan = $uiStore.pan;
     branchColor = $uiStore.branchColor;
     branchColorMode = $uiStore.branchColorMode;
     theme = $uiStore.theme;
+
+    const nextSelectedSignature = $uiStore.selectedNodes.join('|');
+    const selectedNodesChanged = selectedNodeSignature !== nextSelectedSignature;
+    selectedNodeSignature = nextSelectedSignature;
     
     // 只在分支颜色变化时重新渲染树
     // 缩放和平移只更新变换，不重新渲染
     if (renderer && tree && layoutResult) {
-      if (oldBranchColor !== branchColor || oldBranchColorMode !== branchColorMode || oldTheme !== theme) {
+      if (oldBranchColor !== branchColor || oldBranchColorMode !== branchColorMode || oldTheme !== theme || selectedNodesChanged) {
         render();
       } else {
         updateTransform();

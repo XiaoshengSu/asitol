@@ -53,11 +53,38 @@ export class SVGRenderer {
     return new Set(selectedNodes);
   }
 
+  private getSelectionHighlightColor(): string {
+    if (typeof uiStore === 'undefined') return '#ff4d4f';
+
+    let color: string | null = null;
+    uiStore.subscribe(state => {
+      color = state.selectionHighlightColor;
+    })();
+    return color || '#ff4d4f';
+  }
+
   private applySelectedNodeStyles(baseRadius: number): void {
     const selectedNodeSet = this.getSelectedNodeSet();
+    const selectedColor = this.getSelectionHighlightColor();
+
+    this.g.selectAll<SVGPathElement, { source: string; target: string }>('.link')
+      .attr('stroke', function (d) {
+        const base = d3.select(this).attr('data-base-stroke') || d3.select(this).attr('stroke');
+        if (!d3.select(this).attr('data-base-stroke')) {
+          d3.select(this).attr('data-base-stroke', base || '#8f96a3');
+        }
+        return selectedNodeSet.has(d.target) ? selectedColor : (base || '#8f96a3');
+      })
+      .attr('stroke-width', function (d) {
+        const baseWidth = Number(d3.select(this).attr('data-base-stroke-width') || d3.select(this).attr('stroke-width') || 1);
+        if (!d3.select(this).attr('data-base-stroke-width')) {
+          d3.select(this).attr('data-base-stroke-width', String(baseWidth));
+        }
+        return selectedNodeSet.has(d.target) ? Math.max(2.2, baseWidth * 1.6) : baseWidth;
+      });
 
     this.g.selectAll<SVGCircleElement, [string, { x: number; y: number }]>('.node')
-      .attr('stroke', (d: [string, { x: number; y: number }]) => selectedNodeSet.has(d[0]) ? '#ff4d4f' : 'transparent')
+      .attr('stroke', (d: [string, { x: number; y: number }]) => selectedNodeSet.has(d[0]) ? selectedColor : 'transparent')
       .attr('stroke-width', (d: [string, { x: number; y: number }]) => selectedNodeSet.has(d[0]) ? 3 : 2)
       .attr('r', (d: [string, { x: number; y: number }]) => selectedNodeSet.has(d[0]) ? baseRadius * 1.45 : baseRadius);
   }
@@ -741,6 +768,7 @@ export class SVGRenderer {
     const translateY = centerY - nodePos.y * scale;
     
     if (typeof uiStore !== 'undefined') {
+      uiStore.setSelectionHighlightColor(null);
       uiStore.selectNode(nodeId);
       uiStore.setZoom(scale);
       uiStore.setPan({ x: translateX, y: translateY });

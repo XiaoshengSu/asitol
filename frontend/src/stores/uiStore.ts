@@ -19,6 +19,7 @@ const createUIStore = () => {
     branchColor: string;
     branchColorMode: 'single' | 'clade';
     theme: 'dark' | 'light';
+    selectionHighlightColor: string | null;
   }>({
     sidebarVisible: true,
     layersPanelVisible: true,
@@ -33,7 +34,8 @@ const createUIStore = () => {
     showLabels: true,
     branchColor: '#8f96a3',
     branchColorMode: 'clade',
-    theme: 'dark'
+    theme: 'dark',
+    selectionHighlightColor: null
   });
 
   const getLongestLeafNameLength = (node: any): number => {
@@ -182,7 +184,8 @@ const createUIStore = () => {
       selectedNodes: state.selectedNodes.filter(id => id !== nodeId)
     })),
     // 清空选择
-    clearSelection: () => update(state => ({ ...state, selectedNodes: [] })),
+    clearSelection: () => update(state => ({ ...state, selectedNodes: [], selectionHighlightColor: null })),
+    setSelectionHighlightColor: (color: string | null) => update(state => ({ ...state, selectionHighlightColor: color })),
     // 设置搜索查询
     setSearchQuery: (query: string) => update(state => ({
       ...state,
@@ -236,7 +239,8 @@ const createUIStore = () => {
       showLabels: true,
       branchColor: '#8f96a3',
       branchColorMode: 'clade',
-      theme: 'dark'
+      theme: 'dark',
+      selectionHighlightColor: null
     })
   };
 };

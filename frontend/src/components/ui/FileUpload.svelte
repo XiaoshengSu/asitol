@@ -63,9 +63,14 @@
   let fileInputEl: HTMLInputElement | null = null;
   let acceptedFileTypes = '.nwk,.newick,.txt';
   let currentTree: Tree | null = null;
+  let theme: 'dark' | 'light' = 'dark';
 
   const unsubscribeTree = treeStore.subscribe(state => {
     currentTree = state.tree;
+  });
+
+  const unsubscribeUI = uiStore.subscribe(state => {
+    theme = state.theme;
   });
 
   const getLayerSnapshot = () => {
@@ -526,21 +531,22 @@
 
   onDestroy(() => {
     unsubscribeTree();
+    unsubscribeUI();
   });
 </script>
 
 <div class="space-y-2.5">
-  <div class="text-[10px] text-gray-400">{uploadType === 'tree' ? 'Newick' : 'JSON'}</div>
+  <div class={`text-[10px] ${theme === 'light' ? 'text-slate-500' : 'text-gray-400'}`}>{uploadType === 'tree' ? 'Newick' : 'JSON'}</div>
 
-  <div class="grid grid-cols-2 gap-2 rounded bg-gray-900 p-1">
+  <div class={`grid grid-cols-2 gap-2 rounded p-1 ${theme === 'light' ? 'bg-slate-100' : 'bg-gray-900'}`}>
     <button
-      class={`text-xs py-1.5 rounded ${uploadType === 'tree' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700/80'}`}
+      class={`text-xs py-1.5 rounded ${uploadType === 'tree' ? 'bg-blue-600 text-white' : (theme === 'light' ? 'text-slate-700 hover:bg-slate-200' : 'text-gray-300 hover:bg-gray-700/80')}`}
       on:click={() => switchUploadType('tree')}
     >
       树文件
     </button>
     <button
-      class={`text-xs py-1.5 rounded ${uploadType === 'annotation' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700/80'}`}
+      class={`text-xs py-1.5 rounded ${uploadType === 'annotation' ? 'bg-blue-600 text-white' : (theme === 'light' ? 'text-slate-700 hover:bg-slate-200' : 'text-gray-300 hover:bg-gray-700/80')}`}
       on:click={() => switchUploadType('annotation')}
     >
       注释文件
@@ -558,14 +564,14 @@
 
     {#if uploadType === 'tree'}
       <button
-        class="text-xs bg-gray-700 hover:bg-gray-600 text-white py-2 px-2 rounded disabled:opacity-50 whitespace-nowrap"
+        class={`text-xs py-2 px-2 rounded disabled:opacity-50 whitespace-nowrap ${theme === 'light' ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-gray-700 hover:bg-gray-600 text-white'}`}
         on:click={loadExampleTree}
         disabled={loading}
       >
         示例树
       </button>
       <button
-        class="text-xs bg-gray-700 hover:bg-gray-600 text-white py-2 px-2 rounded disabled:opacity-50 whitespace-nowrap"
+        class={`text-xs py-2 px-2 rounded disabled:opacity-50 whitespace-nowrap ${theme === 'light' ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-gray-700 hover:bg-gray-600 text-white'}`}
         on:click={applyExampleAnnotation}
         disabled={loading || !currentTree}
       >
@@ -582,10 +588,10 @@
     on:change={handleFileChange}
   />
 
-  <div class="text-[11px] text-gray-400 space-y-1">
+  <div class={`text-[11px] space-y-1 ${theme === 'light' ? 'text-slate-500' : 'text-gray-400'}`}>
     <div>{uploadType === 'tree' ? '支持 .nwk / .newick / .txt' : '支持 .json / .txt'}</div>
     {#if file}
-      <div class="text-gray-300 truncate">当前文件: {file.name}</div>
+      <div class={`truncate ${theme === 'light' ? 'text-slate-700' : 'text-gray-300'}`}>当前文件: {file.name}</div>
     {/if}
     {#if error}
       <div class="text-red-400">{error}</div>
@@ -593,9 +599,9 @@
   </div>
 
   <div class="flex items-center gap-2">
-    <span class="text-[11px] text-gray-400 whitespace-nowrap">注释方式</span>
+    <span class={`text-[11px] whitespace-nowrap ${theme === 'light' ? 'text-slate-500' : 'text-gray-400'}`}>注释方式</span>
     <select
-      class="flex-1 text-xs bg-gray-700 text-gray-300 rounded p-1.5"
+      class={`flex-1 text-xs rounded p-1.5 ${theme === 'light' ? 'bg-white text-slate-700 border border-slate-300' : 'bg-gray-700 text-gray-300'}`}
       bind:value={annotationType}
     >
       {#each ANNOTATION_OPTIONS as option}
@@ -604,5 +610,5 @@
     </select>
   </div>
 
-  <div class="text-[10px] text-gray-500">{getAnnotationHint(annotationType)}</div>
+  <div class={`text-[10px] ${theme === 'light' ? 'text-slate-500' : 'text-gray-500'}`}>{getAnnotationHint(annotationType)}</div>
 </div>
