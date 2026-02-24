@@ -63,7 +63,23 @@
 
   // 重置视图
   const resetView = () => {
-    uiStore.resetView();
+    // 先检查是否有树数据
+    let treeState: any;
+    treeStore.subscribe(state => treeState = state)();
+    
+    // 如果没有布局结果或节点信息，先触发布局计算
+    if (!treeState?.layoutResult?.nodes && treeState?.tree) {
+      // 通过更新布局配置来触发布局计算
+      treeStore.updateLayoutConfig({ type: treeState.layoutConfig.type });
+      
+      // 延迟执行重置视图，确保布局计算完成
+      setTimeout(() => {
+        uiStore.resetView();
+      }, 100);
+    } else {
+      // 布局计算已经完成，直接执行重置视图
+      uiStore.resetView();
+    }
   };
 
 

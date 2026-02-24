@@ -97,58 +97,75 @@ const createUIStore = () => {
     }),
     // 重置视图
     resetView: () => {
-      // 先计算树的边界
+      // 先同步计算树的边界，确保状态已更新
       treeStore.calculateTreeBounds();
       
-      // 获取当前树的状态
-      let treeState: any;
-      treeStore.subscribe(state => treeState = state)();
-      
-      // 计算居中位置
-      let panX = 0;
-      let panY = 0;
-      let zoom = 1;
-      
-      if (treeState?.layoutResult?.bounds && treeState?.layoutConfig) {
-        const { bounds } = treeState.layoutResult;
-        const canvasWidth = Math.max(1, treeState.layoutConfig.width || 800);
-        const canvasHeight = Math.max(1, treeState.layoutConfig.height || 600);
-        const isRectangular = treeState.layoutConfig.type === 'rectangular';
-
-        let leftExtra = 24;
-        let rightExtra = 24;
-        let topExtra = 24;
-        let bottomExtra = 24;
-
-        if (isRectangular) {
-          const longestLeafName = getLongestLeafNameLength(treeState?.tree?.root);
-          rightExtra = Math.min(420, Math.max(180, 44 + longestLeafName * 7));
-          leftExtra = 16;
-          topExtra = 20;
-          bottomExtra = 20;
-        }
-
-        const contentWidth = Math.max(1, bounds.width + leftExtra + rightExtra);
-        const contentHeight = Math.max(1, bounds.height + topExtra + bottomExtra);
-        const fitScaleX = canvasWidth / contentWidth;
-        const fitScaleY = canvasHeight / contentHeight;
-        zoom = Math.min(1, fitScaleX, fitScaleY) * 0.98;
-
-        const contentMinX = bounds.minX - leftExtra;
-        const contentMinY = bounds.minY - topExtra;
-        const contentCenterX = contentMinX + contentWidth / 2;
-        const contentCenterY = contentMinY + contentHeight / 2;
+      // 使用 setTimeout 确保 calculateTreeBounds 的更新已经传播
+      setTimeout(() => {
+        let treeState: any;
+        treeStore.subscribe(state => treeState = state)();
+         
+        // 计算居中位置
+        let panX = 0;
+        let panY = 0;
+        let zoom = 1;
         
-        // 计算居中的平移值
-        panX = canvasWidth / 2 - contentCenterX * zoom;
-        panY = canvasHeight / 2 - contentCenterY * zoom;
-      }
-      
-      return update(state => ({ 
-        ...state, 
-        zoom, 
-        pan: { x: panX, y: panY }
-      }));
+        // 获取画布中心位置
+        let canvasCenterX = 400; // 默认值
+        let canvasCenterY = 300; // 默认值
+        
+        if (treeState?.layoutConfig) {
+          canvasCenterX = (treeState.layoutConfig.width || 800) / 2;
+          canvasCenterY = (treeState.layoutConfig.height || 600) / 2;
+        }
+        
+        if (treeState?.layoutResult?.bounds && treeState?.layoutConfig) {
+          const { bounds } = treeState.layoutResult;
+          const canvasWidth = Math.max(1, treeState.layoutConfig.width || 800);
+          const canvasHeight = Math.max(1, treeState.layoutConfig.height || 600);
+          const isRectangular = treeState.layoutConfig.type === 'rectangular';
+
+          let leftExtra = 24;
+          let rightExtra = 24;
+          let topExtra = 24;
+          let bottomExtra = 24;
+
+          if (isRectangular) {
+            const longestLeafName = getLongestLeafNameLength(treeState?.tree?.root);
+            rightExtra = Math.min(420, Math.max(180, 44 + longestLeafName * 7));
+            leftExtra = 16;
+            topExtra = 20;
+            bottomExtra = 20;
+          }
+
+          const contentWidth = Math.max(1, bounds.width + leftExtra + rightExtra);
+          const contentHeight = Math.max(1, bounds.height + topExtra + bottomExtra);
+          const fitScaleX = canvasWidth / contentWidth;
+          const fitScaleY = canvasHeight / contentHeight;
+          zoom = Math.min(1, fitScaleX, fitScaleY) * 0.98;
+
+          const contentMinX = bounds.minX - leftExtra;
+          const contentMinY = bounds.minY - topExtra;
+          const contentCenterX = contentMinX + contentWidth / 2;
+          const contentCenterY = contentMinY + contentHeight / 2;
+          
+          // 计算居中的平移值
+          panX = canvasCenterX - contentCenterX * zoom;
+          panY = canvasCenterY - contentCenterY * zoom;
+        } else if (treeState?.tree) {
+          // 如果没有边界信息但有树数据，使用画布中心作为参考点
+          // 默认居中位置，与setZoom函数的逻辑保持一致
+          panX = canvasCenterX - 100; // 向左偏移一点，留出标签空间
+          panY = canvasCenterY;
+          zoom = 0.8; // 默认缩放比例
+        }
+        
+        return update(state => ({ 
+          ...state, 
+          zoom, 
+          pan: { x: panX, y: panY }
+        }));
+      }, 50);
     },
     // 选择节点
     selectNode: (nodeId: string, multiSelect: boolean = false) => update(state => ({

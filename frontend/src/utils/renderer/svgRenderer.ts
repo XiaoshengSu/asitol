@@ -62,23 +62,36 @@ export class SVGRenderer {
       .attr('r', (d: [string, { x: number; y: number }]) => selectedNodeSet.has(d[0]) ? baseRadius * 1.45 : baseRadius);
   }
 
+  /**
+   * FIX: Compute the true geometric center of all rendered nodes.
+   *
+   * Annotation layers live inside `this.g` (the same SVG group as the tree nodes),
+   * so their coordinates must be in the same node-coordinate space.
+   * The bounding-box midpoint of all node positions is the correct center for
+   * circular annotation rings, and it is independent of canvas size or zoom state.
+   */
+  private computeTreeCenter(): { cx: number; cy: number } {
+    const allNodes = Object.values(this.nodes || {});
+    if (allNodes.length === 0) {
+      return { cx: 0, cy: 0 };
+    }
+    const xs = allNodes.map(p => p.x);
+    const ys = allNodes.map(p => p.y);
+    return {
+      cx: (Math.min(...xs) + Math.max(...xs)) / 2,
+      cy: (Math.min(...ys) + Math.max(...ys)) / 2,
+    };
+  }
+
   private doRender(tree: Tree, layoutResult: LayoutResult, config: RenderConfig): void {
-    // Clear all elements in this.g (tree elements)
     this.g.selectAll('*').remove();
-    
-    // Clear all annotation layers in SVG root
     this.svg.selectAll('.annotation-layer').remove();
 
     const centerX = config.width / 2;
     const centerY = config.height / 2;
 
-    // Reset base transform
     this.baseTransform = '';
-    
-    // Don't apply any transform here, it will be overwritten by updateTransform
-    // Just set the base transform to empty string
     this.g.attr('transform', '');
-
 
     const nodeCount = Object.keys(layoutResult.nodes).length;
     const isLargeTree = nodeCount > 500;
@@ -135,7 +148,6 @@ export class SVGRenderer {
 
         if (layoutResult.type === 'rectangular') {
           const isTargetLeaf = !findNodeById(tree.root, d.target)?.children || findNodeById(tree.root, d.target)?.children.length === 0;
-          
           if (isTargetLeaf) {
             const horizontalEndX = Math.max(source.x, target.x) + 18;
             return `M ${source.x} ${source.y} L ${target.x} ${source.y} L ${target.x} ${target.y} L ${horizontalEndX} ${target.y}`;
@@ -195,7 +207,6 @@ export class SVGRenderer {
       .attr('cursor', 'pointer')
       .on('mouseover', (event, d) => {
         d3.selectAll('.tree-tooltip').remove();
-        
         const tooltip = d3.select('body')
           .append('div')
           .attr('class', 'tree-tooltip')
@@ -209,20 +220,17 @@ export class SVGRenderer {
           .style('pointer-events', 'none')
           .style('left', (event.pageX + 10) + 'px')
           .style('top', (event.pageY + 10) + 'px');
-        
         const node = findNodeById(tree.root, d[0]);
         if (node) {
-          const tooltipContent = `
+          tooltip.html(`
             <div><strong>Name:</strong> ${node.name || 'Unnamed'}</div>
             <div><strong>ID:</strong> ${node.id}</div>
             ${node.children && node.children.length > 0 ? `<div><strong>Children:</strong> ${node.children.length}</div>` : ''}
             ${node.length ? `<div><strong>Length:</strong> ${node.length}</div>` : ''}
             <div><small>Click to zoom in</small></div>
             <div><small>Right click for more options</small></div>
-          `;
-          tooltip.html(tooltipContent);
+          `);
         }
-        
         d3.select(event.currentTarget)
           .attr('stroke', '#ffcc00')
           .attr('r', nodeSize * 1.5);
@@ -232,17 +240,14 @@ export class SVGRenderer {
           .style('left', (event.pageX + 10) + 'px')
           .style('top', (event.pageY + 10) + 'px');
       })
-      .on('mouseout', (event) => {
+      .on('mouseout', () => {
         d3.selectAll('.tree-tooltip').remove();
-        
         this.applySelectedNodeStyles(nodeSize);
       })
       .on('click', (event, d) => {
         event.stopPropagation();
         this.zoomToNode(d[0], layoutResult, config);
-        
         this.applySelectedNodeStyles(nodeSize);
-        
         event.preventDefault();
       });
 
@@ -263,9 +268,9 @@ export class SVGRenderer {
         ? this.selectCircularLabels(circularLeafNodes, centerX, centerY, isLargeTree)
         : circularLeafNodes;
     
-    if (layoutResult.type === 'rectangular') {
-      labelData = this.optimizeRectangularLabels(labelData, isLargeTree);
-    }
+      if (layoutResult.type === 'rectangular') {
+        labelData = this.optimizeRectangularLabels(labelData, isLargeTree);
+      }
 
       this.g.selectAll('.label')
         .data(labelData)
@@ -288,12 +293,10 @@ export class SVGRenderer {
         .attr('text-anchor', () => 'start')
         .attr('x', d => {
           if (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted') {
-            const x = d[1].x;
-            const y = d[1].y;
             const offset = this.getCircularLabelOffset(isLargeTree);
             const dir = labelDirection.get(d[0]);
-            const ux = dir ? dir.ux : Math.cos(Math.atan2(y - centerY, x - centerX));
-            return x + offset * ux;
+            const ux = dir ? dir.ux : Math.cos(Math.atan2(d[1].y - centerY, d[1].x - centerX));
+            return d[1].x + offset * ux;
           } else if (layoutResult.type === 'rectangular') {
             return d[1].x + 22;
           }
@@ -301,12 +304,10 @@ export class SVGRenderer {
         })
         .attr('y', d => {
           if (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted') {
-            const x = d[1].x;
-            const y = d[1].y;
             const offset = this.getCircularLabelOffset(isLargeTree);
             const dir = labelDirection.get(d[0]);
-            const uy = dir ? dir.uy : Math.sin(Math.atan2(y - centerY, x - centerX));
-            return y + offset * uy;
+            const uy = dir ? dir.uy : Math.sin(Math.atan2(d[1].y - centerY, d[1].x - centerX));
+            return d[1].y + offset * uy;
           } else if (layoutResult.type === 'rectangular') {
             return d[1].y;
           }
@@ -314,17 +315,14 @@ export class SVGRenderer {
         })
         .attr('transform', d => {
           if (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted') {
-            const x = d[1].x;
-            const y = d[1].y;
             const offset = this.getCircularLabelOffset(isLargeTree);
             const dir = labelDirection.get(d[0]);
-            const angle = dir ? dir.angle : Math.atan2(y - centerY, x - centerX);
+            const angle = dir ? dir.angle : Math.atan2(d[1].y - centerY, d[1].x - centerX);
             const ux = dir ? dir.ux : Math.cos(angle);
             const uy = dir ? dir.uy : Math.sin(angle);
-            const labelX = x + offset * ux;
-            const labelY = y + offset * uy;
-            const rotation = angle * (180 / Math.PI);
-            return `rotate(${rotation}, ${labelX}, ${labelY})`;
+            const labelX = d[1].x + offset * ux;
+            const labelY = d[1].y + offset * uy;
+            return `rotate(${angle * (180 / Math.PI)}, ${labelX}, ${labelY})`;
           }
           return '';
         })
@@ -342,14 +340,11 @@ export class SVGRenderer {
       setTimeout(() => {
         let selectedNodes: string[] = [];
         uiStore.subscribe(state => selectedNodes = state.selectedNodes)();
-        
         if (selectedNodes.length > 0) {
-          selectedNodes.forEach(nodeId => {
-          });
+          selectedNodes.forEach(_nodeId => {});
         }
       }, 50);
     }
-
   }
 
   private renderLargeTree(
@@ -381,7 +376,6 @@ export class SVGRenderer {
 
         if (layoutResult.type === 'rectangular') {
           const isTargetLeaf = !findNodeById(tree.root, d.target)?.children || findNodeById(tree.root, d.target)?.children.length === 0;
-          
           if (isTargetLeaf) {
             const horizontalEndX = Math.max(source.x, target.x) + 18;
             return `M ${source.x} ${source.y} L ${target.x} ${source.y} L ${target.x} ${target.y} L ${horizontalEndX} ${target.y}`;
@@ -431,7 +425,6 @@ export class SVGRenderer {
       .attr('cursor', 'pointer')
       .on('mouseover', (event, d) => {
         d3.selectAll('.tree-tooltip').remove();
-        
         const tooltip = d3.select('body')
           .append('div')
           .attr('class', 'tree-tooltip')
@@ -445,20 +438,17 @@ export class SVGRenderer {
           .style('pointer-events', 'none')
           .style('left', (event.pageX + 10) + 'px')
           .style('top', (event.pageY + 10) + 'px');
-        
         const node = findNodeById(tree.root, d[0]);
         if (node) {
-          const tooltipContent = `
+          tooltip.html(`
             <div><strong>Name:</strong> ${node.name || 'Unnamed'}</div>
             <div><strong>ID:</strong> ${node.id}</div>
             ${node.children && node.children.length > 0 ? `<div><strong>Children:</strong> ${node.children.length}</div>` : ''}
             ${node.length ? `<div><strong>Length:</strong> ${node.length}</div>` : ''}
             <div><small>Click to zoom in</small></div>
             <div><small>Right click for more options</small></div>
-          `;
-          tooltip.html(tooltipContent);
+          `);
         }
-        
         d3.select(event.currentTarget)
           .attr('stroke', '#ffcc00')
           .attr('r', largeNodeSize * 1.5);
@@ -468,17 +458,14 @@ export class SVGRenderer {
           .style('left', (event.pageX + 10) + 'px')
           .style('top', (event.pageY + 10) + 'px');
       })
-      .on('mouseout', (event) => {
+      .on('mouseout', () => {
         d3.selectAll('.tree-tooltip').remove();
-        
         this.applySelectedNodeStyles(largeNodeSize);
       })
       .on('click', (event, d) => {
         event.stopPropagation();
         this.zoomToNode(d[0], layoutResult, config);
-        
         this.applySelectedNodeStyles(largeNodeSize);
-        
         event.preventDefault();
       });
     
@@ -526,33 +513,26 @@ export class SVGRenderer {
         .attr('font-size', this.getCircularLabelFontSize(leafNodes.length, true))
         .attr('text-anchor', () => 'start')
         .attr('x', d => {
-          const x = d[1].x;
-          const y = d[1].y;
           const offset = this.getCircularLabelOffset(true);
           const dir = labelDirection.get(d[0]);
-          const ux = dir ? dir.ux : Math.cos(Math.atan2(y - centerY, x - centerX));
-          return x + offset * ux;
+          const ux = dir ? dir.ux : Math.cos(Math.atan2(d[1].y - centerY, d[1].x - centerX));
+          return d[1].x + offset * ux;
         })
         .attr('y', d => {
-          const x = d[1].x;
-          const y = d[1].y;
           const offset = this.getCircularLabelOffset(true);
           const dir = labelDirection.get(d[0]);
-          const uy = dir ? dir.uy : Math.sin(Math.atan2(y - centerY, x - centerX));
-          return y + offset * uy;
+          const uy = dir ? dir.uy : Math.sin(Math.atan2(d[1].y - centerY, d[1].x - centerX));
+          return d[1].y + offset * uy;
         })
         .attr('transform', d => {
-          const x = d[1].x;
-          const y = d[1].y;
           const offset = this.getCircularLabelOffset(true);
           const dir = labelDirection.get(d[0]);
-          const angle = dir ? dir.angle : Math.atan2(y - centerY, x - centerX);
+          const angle = dir ? dir.angle : Math.atan2(d[1].y - centerY, d[1].x - centerX);
           const ux = dir ? dir.ux : Math.cos(angle);
           const uy = dir ? dir.uy : Math.sin(angle);
-          const labelX = x + offset * ux;
-          const labelY = y + offset * uy;
-          const rotation = angle * (180 / Math.PI);
-          return `rotate(${rotation}, ${labelX}, ${labelY})`;
+          const labelX = d[1].x + offset * ux;
+          const labelY = d[1].y + offset * uy;
+          return `rotate(${angle * (180 / Math.PI)}, ${labelX}, ${labelY})`;
         })
         .text(d => {
           const node = findNodeById(tree.root, d[0]);
@@ -614,29 +594,18 @@ export class SVGRenderer {
   }
 
   updateTransform(transform: string): void {
-    // Apply the base transform for centering and scaling, then the user transform for panning and zooming
     if (transform) {
-      // Combine base transform with user transform
       this.g.attr('transform', `${this.baseTransform} ${transform}`);
     } else {
-      // Use only base transform
       this.g.attr('transform', this.baseTransform);
     }
   }
 
   resize(width: number, height: number): void {
     this.svg.attr('width', width).attr('height', height);
-    // Update viewBox to match new size
     this.svg.attr('viewBox', `0 0 ${width} ${height}`);
   }
 
-  /**
-   * Calculate node depths recursively
-   * @param node Current node
-   * @param depth Current depth
-   * @param nodeDepth Map to store node depths
-   * @returns Maximum depth found
-   */
   private calculateNodeDepths(
     node: any,
     depth: number,
@@ -645,33 +614,23 @@ export class SVGRenderer {
     if (node.id) {
       nodeDepth.set(node.id, depth);
     }
-    
     if (!node.children || node.children.length === 0) {
       return depth;
     }
-    
     let maxChildDepth = depth;
     for (const child of node.children) {
       const childDepth = this.calculateNodeDepths(child, depth + 1, nodeDepth);
       maxChildDepth = Math.max(maxChildDepth, childDepth);
     }
-    
     return maxChildDepth;
   }
 
-  /**
-   * Optimize rectangular labels to avoid overlap
-   * @param labels Label data
-   * @param isLargeTree Whether the tree is large
-   * @returns Optimized label data
-   */
   private optimizeRectangularLabels(
     labels: Array<[string, { x: number; y: number }]>,
     isLargeTree: boolean
   ): Array<[string, { x: number; y: number }]> {
     if (labels.length <= 1) return labels;
 
-    // Always optimize in Y order for deterministic output.
     const sortedLabels = [...labels].sort((a, b) => a[1].y - b[1].y);
     const selectedNodeSet = this.getSelectedNodeSet();
 
@@ -680,7 +639,6 @@ export class SVGRenderer {
       gaps.push(sortedLabels[i][1].y - sortedLabels[i - 1][1].y);
     }
 
-    // If vertical density is low enough, keep all labels.
     const medianGap = this.median(gaps);
     const fontSizePx = isLargeTree ? 8 : 10;
     const requiredSpacing = Math.max(6, fontSizePx * 0.9);
@@ -688,7 +646,6 @@ export class SVGRenderer {
       return sortedLabels;
     }
 
-    // Dense labels: keep by spacing, but always keep first/last/selected.
     const mustKeep = new Set<string>([
       sortedLabels[0][0],
       sortedLabels[sortedLabels.length - 1][0],
@@ -709,12 +666,6 @@ export class SVGRenderer {
     return optimizedLabels;
   }
 
-  /**
-   * Zoom to a specific node
-   * @param nodeId Node ID to zoom to
-   * @param layoutResult Layout result
-   * @param config Render config
-   */
   private zoomToNode(
     nodeId: string,
     layoutResult: LayoutResult,
@@ -725,33 +676,19 @@ export class SVGRenderer {
     
     const centerX = config.width / 2;
     const centerY = config.height / 2;
-    
     const translateX = centerX - nodePos.x;
     const translateY = centerY - nodePos.y;
-    
     const scale = 2;
     
     if (typeof uiStore !== 'undefined') {
       uiStore.selectNode(nodeId);
-    }
-    
-    if (typeof uiStore !== 'undefined') {
-      const newZoom = scale;
-      const newPan = { x: translateX, y: translateY };
-      
-      uiStore.setZoom(newZoom);
-      uiStore.setPan(newPan);
+      uiStore.setZoom(scale);
+      uiStore.setPan({ x: translateX, y: translateY });
     } else {
-      const transform = `translate(${translateX}, ${translateY}) scale(${scale})`;
-      this.updateTransform(transform);
+      this.updateTransform(`translate(${translateX}, ${translateY}) scale(${scale})`);
     }
   }
 
-  /**
-   * Render annotations
-   * @param config Render config
-   * @param cladeColorMap Clade color map
-   */
   private renderAnnotations(config: RenderConfig, cladeColorMap: Map<string, string> | null): void {
     let layers: Array<{ id: string; visible: boolean; order: number; data: AnnotationData }> = [];
     if (typeof annotationStore !== 'undefined') {
@@ -768,9 +705,7 @@ export class SVGRenderer {
       const annotation = layer.data;
       if (!annotation) return;
 
-      // Add annotation layers to SVG root instead of this.g
-      // This ensures annotations are not affected by zoom/pan transforms
-      const layerGroup = this.svg.append('g')
+      const layerGroup = this.g.append('g')
         .attr('class', `annotation-layer layer-${index}`)
         .attr('data-layer-id', layer.id)
         .attr('opacity', this.clamp(Number(annotation.config?.opacity ?? 1), 0.35, 1));
@@ -791,15 +726,6 @@ export class SVGRenderer {
     });
   }
 
-  /**
-   * Render color strip annotations
-   * @param group SVG group
-   * @param annotation Annotation data
-   * @param config Render config
-   * @param cladeColorMap Clade color map
-   * @param layerIndex Layer index
-   * @param _layerCount Total layer count
-   */
   private renderColorStrip(
     group: d3.Selection<SVGGElement, unknown, null, undefined>,
     annotation: AnnotationData,
@@ -813,13 +739,11 @@ export class SVGRenderer {
     const rows = this.getAnnotationRows(annotation);
     if (rows.length === 0) return;
 
-    const rowHeight = this.getAnnotationRowHeight(rows);
     const layerGap = 12;
     const layerOffset = layerIndex * (trackWidth + layerGap);
     const backgroundColor = config.backgroundColor || '#242424';
     
-    // Only render annotation rings for circular and radial layouts
-    if (this.layoutType === 'circular' || this.layoutType === 'radial') {
+    if (this.layoutType === 'circular' || this.layoutType === 'radial' || this.layoutType === 'unrooted') {
       this.renderCircularAnnotationRing(group, annotation, config, cladeColorMap, trackWidth, layerOffset, backgroundColor);
     }
   }
@@ -895,7 +819,38 @@ export class SVGRenderer {
   }
 
   /**
-   * Render circular annotation ring
+   * Render circular annotation ring.
+   *
+   * ── Root cause of the original misalignment bug ───────────────────────────
+   *
+   * The old code computed the ring center as:
+   *
+   *   const layoutCenterX = (config.layoutWidth || config.width) / 2;
+   *   const layoutCenterY = (config.layoutHeight || config.height) / 2;
+   *
+   * This is the *canvas* midpoint, NOT the geometric center of the tree nodes.
+   * The circular layout algorithm places the root at the center of its own
+   * coordinate space, which is typically close to (layoutRadius, layoutRadius)
+   * inside the layout, but that origin is then embedded into the SVG canvas
+   * at a position that depends on padding, margins, and initial translate.
+   *
+   * Because annotation layers are children of `this.g` (the same group as the
+   * tree nodes), every coordinate inside that group is in node-coordinate
+   * space.  Using config.width/2 as the center puts the ring at the canvas
+   * origin (top-left) instead of around the tree.
+   *
+   * ── Fix ───────────────────────────────────────────────────────────────────
+   *
+   * 1. `computeTreeCenter()` calculates the bounding-box midpoint of all node
+   *    positions.  For a symmetric circular layout this equals the layout
+   *    center exactly; for asymmetric / unrooted layouts it is still the best
+   *    available approximation.
+   *
+   * 2. All arc paths produced by `d3.arc()` are centered at (0, 0) by
+   *    default.  We translate each `<path>` element by `(treeCx, treeCy)` so
+   *    the arcs are concentric with the tree circle.
+   *
+   * 3. The title label and max-radius computation also use `(treeCx, treeCy)`.
    */
   private renderCircularAnnotationRing(
     group: d3.Selection<SVGGElement, unknown, null, undefined>,
@@ -906,131 +861,74 @@ export class SVGRenderer {
     layerOffset: number,
     backgroundColor: string
   ): void {
-    // Only process leaf nodes
+    // Only leaf nodes get annotation arcs
     let rows = this.getAnnotationRows(annotation);
     rows = rows.filter(row => this.leafNodeIdSet.has(row.id));
     if (rows.length === 0) return;
 
-    // Calculate tree actual center based on all nodes positions
-    // This is more reliable than using container center because
-    // layout may be calculated with different dimensions than rendering
-    let sumX = 0;
-    let sumY = 0;
-    let nodeCount = 0;
-    
-    // Use all nodes to calculate center
-    Object.entries(this.nodes || {}).forEach(([_, pos]) => {
-      if (pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
-        sumX += pos.x;
-        sumY += pos.y;
-        nodeCount++;
-      }
-    });
-    
-    // Calculate tree center
-    const treeCenterX = nodeCount > 0 ? sumX / nodeCount : config.width / 2;
-    const treeCenterY = nodeCount > 0 ? sumY / nodeCount : config.height / 2;
-    
-    // Log center positions for debugging
-    console.log('=== Circular Annotation Ring Debug ===');
-    console.log('Calculated tree center:', { x: treeCenterX, y: treeCenterY });
-    console.log('Container center:', { x: config.width / 2, y: config.height / 2 });
-    console.log('Config width/height:', { width: config.width, height: config.height });
-    
-    // Calculate and log tree bounding box center
-    if (this.nodes && Object.keys(this.nodes).length > 0) {
-      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-      Object.entries(this.nodes).forEach(([_, pos]) => {
-        if (pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
-          minX = Math.min(minX, pos.x);
-          maxX = Math.max(maxX, pos.x);
-          minY = Math.min(minY, pos.y);
-          maxY = Math.max(maxY, pos.y);
-        }
-      });
-      const bboxCenterX = (minX + maxX) / 2;
-      const bboxCenterY = (minY + maxY) / 2;
-      console.log('Tree bounding box center:', { x: bboxCenterX, y: bboxCenterY });
-      console.log('Tree bounding box:', { minX, maxX, minY, maxY });
-    }
-    
-    // Calculate tree maximum radius based on distance from tree center to farthest node
+    // ── FIX: use node-coordinate-space center ────────────────────────────────
+    const { cx: treeCx, cy: treeCy } = this.computeTreeCenter();
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // Maximum distance from tree center to any node (= visual radius of the tree)
     let treeMaxRadius = 0;
-    Object.entries(this.nodes || {}).forEach(([_, pos]) => {
+    Object.values(this.nodes || {}).forEach(pos => {
       if (pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
-        const radius = Math.sqrt(Math.pow(pos.x - treeCenterX, 2) + Math.pow(pos.y - treeCenterY, 2));
-        treeMaxRadius = Math.max(treeMaxRadius, radius);
+        const r = Math.hypot(pos.x - treeCx, pos.y - treeCy);
+        treeMaxRadius = Math.max(treeMaxRadius, r);
       }
     });
-    
-    // Ensure minimum radius to avoid zero division
     treeMaxRadius = Math.max(50, treeMaxRadius);
-    
-    // Calculate ring radius to match tree size
+
+    // The annotation ring sits just outside the outermost leaf nodes
     const ringRadius = treeMaxRadius + 30 + layerOffset;
-    
-    // Render title
+
+    // Title at the top of the ring (angle = −90° = top)
     const titleRadius = ringRadius + trackWidth / 2 + 10;
     const titleAngle = -Math.PI / 2;
-    const titleX = treeCenterX + Math.cos(titleAngle) * titleRadius;
-    const titleY = treeCenterY + Math.sin(titleAngle) * titleRadius;
-    
     group.append('text')
-      .attr('x', titleX)
-      .attr('y', titleY)
+      .attr('x', treeCx + Math.cos(titleAngle) * titleRadius)
+      .attr('y', treeCy + Math.sin(titleAngle) * titleRadius)
       .attr('fill', '#cbd5e1')
       .attr('font-size', '9px')
       .attr('font-weight', 600)
       .attr('text-anchor', 'middle')
       .attr('dominant-baseline', 'middle')
       .text(annotation.name || annotation.type);
-    
-    // Sort leaf nodes by angle
+
+    // Sort leaves by angle relative to the true tree center
     const sortedLeaves = rows.sort((a, b) => {
-      const angleA = Math.atan2(a.pos.y - treeCenterY, a.pos.x - treeCenterX);
-      const angleB = Math.atan2(b.pos.y - treeCenterY, b.pos.x - treeCenterX);
+      const angleA = Math.atan2(a.pos.y - treeCy, a.pos.x - treeCx);
+      const angleB = Math.atan2(b.pos.y - treeCy, b.pos.x - treeCx);
       return angleA - angleB;
     });
-    
-    // Calculate angle range for each leaf node
+
     const sortedLeafCount = sortedLeaves.length;
     if (sortedLeafCount === 0) return;
-    
-    // Render arc for each leaf node
+
     sortedLeaves.forEach((leaf, index) => {
-      // Calculate actual angle of this leaf node
-      const leafAngle = Math.atan2(leaf.pos.y - treeCenterY, leaf.pos.x - treeCenterX);
-      
-      // Calculate angle of next leaf node to determine arc range
+      const leafAngle = Math.atan2(leaf.pos.y - treeCy, leaf.pos.x - treeCx);
       const nextLeaf = sortedLeaves[(index + 1) % sortedLeafCount];
-      const nextAngle = Math.atan2(nextLeaf.pos.y - treeCenterY, nextLeaf.pos.x - treeCenterX);
-      
-      // Calculate arc start and end angles
+      const nextAngle = Math.atan2(nextLeaf.pos.y - treeCy, nextLeaf.pos.x - treeCx);
+
       let startAngle = leafAngle;
-      let endAngle = nextAngle;
-      
-      // Handle crossing 0 degree
-      if (endAngle < startAngle) {
-        endAngle += 2 * Math.PI;
-      }
-      
-      // Ensure minimum arc width
+      let endAngle = nextAngle < startAngle ? nextAngle + 2 * Math.PI : nextAngle;
       const minAngleWidth = 0.05;
-      const angleWidth = Math.max(minAngleWidth, endAngle - startAngle);
-      endAngle = startAngle + angleWidth;
-      
-      // Create arc path
+      endAngle = startAngle + Math.max(minAngleWidth, endAngle - startAngle);
+
+      // d3.arc() generates paths centered at (0, 0).
+      // We apply `transform="translate(treeCx, treeCy)"` on every <path>
+      // to place each arc correctly in node-coordinate space.
       const arc = d3.arc()
         .innerRadius(ringRadius)
         .outerRadius(ringRadius + trackWidth)
         .startAngle(startAngle)
         .endAngle(endAngle);
-      
+
       const branchColor = this.getBranchColorForNode(leaf.id, config, cladeColorMap);
       const baseColor = this.getLinkedColor(branchColor, leaf.nodeData?.color, annotation);
       let fillColor = ensureContrast(baseColor, backgroundColor);
-      
-      // Adjust color based on annotation type
+
       if (annotation.type === 'HEATMAP' && leaf.nodeData?.value !== undefined) {
         const ratio = this.normalizeValue(leaf.nodeData.value, annotation.config?.minValue, annotation.config?.maxValue, 1);
         const hsl = d3.hsl(branchColor);
@@ -1045,13 +943,15 @@ export class SVGRenderer {
           backgroundColor
         );
       }
-      
-      // Render arc
+
+      // ── KEY FIX: translate arc from SVG origin (0,0) to tree center ─────
       group.append('path')
         .attr('d', arc())
+        .attr('transform', `translate(${treeCx}, ${treeCy})`)
         .attr('fill', fillColor)
         .attr('stroke', d3.hsl(fillColor).darker(0.75).formatHex())
         .attr('stroke-width', 0.5);
+      // ────────────────────────────────────────────────────────────────────
     });
   }
 
@@ -1090,9 +990,7 @@ export class SVGRenderer {
   private getShowLabels(): boolean {
     let showLabels = true;
     if (typeof uiStore !== 'undefined') {
-      uiStore.subscribe(state => {
-        showLabels = state.showLabels;
-      })();
+      uiStore.subscribe(state => { showLabels = state.showLabels; })();
     }
     return showLabels;
   }

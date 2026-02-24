@@ -43,7 +43,7 @@ const createTreeStore = () => {
     // 计算树的边界
     calculateTreeBounds: () => {
       return update(state => {
-        if (!state.layoutResult || !state.layoutResult.nodes) {
+        if (!state.layoutResult) {
           return state;
         }
         
@@ -53,7 +53,7 @@ const createTreeStore = () => {
         let maxY = -Infinity;
         
         // 遍历nodes对象的所有值
-        const nodeValues = Object.values(state.layoutResult.nodes);
+        const nodeValues = Object.values(state.layoutResult.nodes || {});
         for (const node of nodeValues) {
           if (node && typeof node === 'object' && 'x' in node && 'y' in node) {
             minX = Math.min(minX, node.x);
@@ -61,6 +61,14 @@ const createTreeStore = () => {
             minY = Math.min(minY, node.y);
             maxY = Math.max(maxY, node.y);
           }
+        }
+        
+        // 如果没有节点信息，使用默认边界
+        if (minX === Infinity) {
+          minX = 0;
+          maxX = state.layoutConfig.width || 800;
+          minY = 0;
+          maxY = state.layoutConfig.height || 600;
         }
         
         return {

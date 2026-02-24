@@ -40,7 +40,9 @@ class RectangularLayout implements LayoutAlgorithm {
       id: generateId(),
       type: 'rectangular',
       nodes,
-      links
+      links,
+      layoutWidth: width,
+      layoutHeight: height
     };
   }
 
@@ -156,7 +158,9 @@ class CircularLayout implements LayoutAlgorithm {
       id: generateId(),
       type: 'circular',
       nodes,
-      links
+      links,
+      layoutWidth: width,
+      layoutHeight: height
     };
   }
 
@@ -278,7 +282,9 @@ class RadialLayout implements LayoutAlgorithm {
       id: generateId(),
       type: 'radial',
       nodes,
-      links
+      links,
+      layoutWidth: width,
+      layoutHeight: height
     };
   }
 
@@ -374,7 +380,9 @@ class UnrootedLayout implements LayoutAlgorithm {
       id: generateId(),
       type: 'unrooted',
       nodes,
-      links
+      links,
+      layoutWidth: width,
+      layoutHeight: height
     };
   }
 

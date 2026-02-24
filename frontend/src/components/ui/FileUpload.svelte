@@ -2,6 +2,7 @@
   import { createEventDispatcher, onDestroy } from 'svelte';
   import { treeStore } from '../../stores/treeStore';
   import { annotationStore } from '../../stores/annotationStore';
+  import { uiStore } from '../../stores/uiStore';
   import { parser } from '../../utils/parser';
   import type { Tree } from '../../types/tree';
   import type { AnnotationData, AnnotationType } from '../../types/annotation';
@@ -297,6 +298,10 @@
       exampleTreeMode = true;
       upsertExampleAnnotationLayer(annotationType);
       syncedAnnotationType = annotationType;
+
+      // 布局计算会自动触发居中操作，无需手动调用
+      // TreeLayout.computeLayout() 会在树数据变化时自动执行
+      // 并在计算完成后调用 uiStore.resetView()
     } catch (err) {
       error = `加载示例树失败: ${err instanceof Error ? err.message : '未知错误'}`;
       console.error('Load example tree error:', err);

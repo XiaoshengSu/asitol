@@ -101,6 +101,8 @@
       mode: 'svg',
       width: container.clientWidth,
       height: container.clientHeight,
+      layoutWidth: layoutResult.layoutWidth,
+      layoutHeight: layoutResult.layoutHeight,
       backgroundColor: '#242424',
       nodeColor: '#fff',
       branchColor,

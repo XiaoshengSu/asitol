@@ -86,11 +86,9 @@
 
       const result = algorithm.compute(params);
       treeStore.setLayoutResult(result);
-      treeStore.calculateTreeBounds();
+      
+      // resetView 内部会调用 calculateTreeBounds 并等待状态更新
       uiStore.resetView();
-      
-
-      
       dispatch('layoutComputed', result);
     } catch (error) {
       console.error('Layout computation failed:', error);

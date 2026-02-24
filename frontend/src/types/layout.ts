@@ -19,6 +19,8 @@ export interface RenderConfig {
   mode: RenderMode;
   width: number;
   height: number;
+  layoutWidth?: number;
+  layoutHeight?: number;
   backgroundColor?: string;
   nodeColor?: string;
   branchColor?: string;

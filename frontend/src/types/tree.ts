@@ -36,4 +36,6 @@ export interface LayoutResult {
   type: LayoutType;
   nodes: Record<string, { x: number; y: number; }>;
   links: Array<{ source: string; target: string; }>;
+  layoutWidth?: number;
+  layoutHeight?: number;
 }
