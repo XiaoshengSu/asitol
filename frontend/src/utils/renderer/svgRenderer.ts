@@ -349,7 +349,7 @@ export class SVGRenderer {
         .enter()
         .append('text')
         .attr('class', 'label')
-        .attr('fill', '#fff')
+        .attr('fill', config.backgroundColor ? ensureContrast('#fff', config.backgroundColor) : '#fff')
         .attr('dominant-baseline', 'middle')
         .attr('font-size', () => {
           if (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted') {
@@ -597,7 +597,7 @@ export class SVGRenderer {
         .enter()
         .append('text')
         .attr('class', 'label')
-        .attr('fill', '#fff')
+        .attr('fill', config.backgroundColor ? ensureContrast('#fff', config.backgroundColor) : '#fff')
         .attr('dominant-baseline', 'middle')
         .attr('font-size', this.getCircularLabelFontSize(leafNodes.length, true))
         .attr('text-anchor', () => 'start')
