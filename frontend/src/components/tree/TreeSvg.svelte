@@ -20,6 +20,7 @@
   let pan: { x: number; y: number } = { x: 0, y: 0 };
   let branchColor = '#8f96a3';
   let branchColorMode: 'single' | 'clade' = 'clade';
+  let theme: 'dark' | 'light' = 'dark';
   let isDragging: boolean = false;
   let lastMouseX: number = 0;
   let lastMouseY: number = 0;
@@ -37,16 +38,18 @@
   const unsubscribeUI = uiStore.subscribe($uiStore => {
     const oldBranchColor = branchColor;
     const oldBranchColorMode = branchColorMode;
+    const oldTheme = theme;
     
     zoom = $uiStore.zoom;
     pan = $uiStore.pan;
     branchColor = $uiStore.branchColor;
     branchColorMode = $uiStore.branchColorMode;
+    theme = $uiStore.theme;
     
     // 只在分支颜色变化时重新渲染树
     // 缩放和平移只更新变换，不重新渲染
     if (renderer && tree && layoutResult) {
-      if (oldBranchColor !== branchColor || oldBranchColorMode !== branchColorMode) {
+      if (oldBranchColor !== branchColor || oldBranchColorMode !== branchColorMode || oldTheme !== theme) {
         render();
       } else {
         updateTransform();
@@ -77,8 +80,8 @@
       mode: 'svg',
       width: container.clientWidth,
       height: container.clientHeight,
-      backgroundColor: '#242424',
-      nodeColor: '#fff',
+      backgroundColor: theme === 'light' ? '#f8fafc' : '#0f172a',
+      nodeColor: theme === 'light' ? '#0f172a' : '#fff',
       branchColor,
       branchColorMode,
       annotationDisplayMode: 'inline',
@@ -103,8 +106,8 @@
       height: container.clientHeight,
       layoutWidth: layoutResult.layoutWidth,
       layoutHeight: layoutResult.layoutHeight,
-      backgroundColor: '#242424',
-      nodeColor: '#fff',
+      backgroundColor: theme === 'light' ? '#f8fafc' : '#0f172a',
+      nodeColor: theme === 'light' ? '#0f172a' : '#fff',
       branchColor,
       branchColorMode,
       annotationDisplayMode: 'inline',
@@ -229,7 +232,7 @@
 
 <div
   bind:this={container}
-  class="w-full h-full bg-gray-900 overflow-hidden"
+  class={`w-full h-full overflow-hidden ${theme === 'light' ? 'bg-slate-50' : 'bg-gray-900'}`}
   on:mousedown={handleMouseDown}
   on:mousemove={handleMouseMove}
   on:mouseup={handleMouseUp}

@@ -23,6 +23,7 @@
   let annotationRowsPerPage = 80;
   let annotationPage = 1;
   let tree: Tree | null = null;
+  let theme: 'dark' | 'light' = 'dark';
 
   let overlayEl: HTMLDivElement | null = null;
   let panelEl: HTMLDivElement | null = null;
@@ -41,6 +42,7 @@
     annotationOnlySelected = state.annotationOnlySelected;
     annotationRowsPerPage = state.annotationRowsPerPage;
     annotationPage = state.annotationPage;
+    theme = state.theme;
   });
   const unsubscribeTree = treeStore.subscribe(state => {
     tree = state.tree;
@@ -340,11 +342,11 @@
 <div bind:this={overlayEl} class="absolute inset-0 z-20 pointer-events-none">
   <div
     bind:this={panelEl}
-    class="pointer-events-auto absolute w-[360px] max-w-[92vw] rounded-lg border border-gray-700/70 bg-gray-900/82 shadow-lg backdrop-blur-sm"
+    class={`pointer-events-auto absolute w-[340px] max-w-[92vw] rounded-lg border shadow-lg backdrop-blur-sm ${theme === 'light' ? 'border-slate-300 bg-white/94' : 'border-gray-700/70 bg-gray-900/82'}`}
     style={`left:${panelX}px; top:${panelY}px;`}
   >
     <div
-      class="h-2.5 cursor-move border-b border-gray-700/60 bg-gray-800/70"
+      class={`h-2.5 cursor-move border-b ${theme === 'light' ? 'border-slate-200 bg-slate-100/90' : 'border-gray-700/60 bg-gray-800/70'}`}
       role="button"
       tabindex="0"
       on:pointerdown={startDrag}
@@ -354,33 +356,37 @@
 
     <div class="max-h-[62vh] overflow-auto p-3 space-y-3">
       {#if layers.filter(layer => layer.visible).length === 0}
-        <div class="text-xs text-gray-400">暂无可见图例</div>
+        <div class={`text-xs ${theme === 'light' ? 'text-slate-500' : 'text-gray-400'}`}>暂无可见图例</div>
       {:else}
         {#each layers.filter(layer => layer.visible) as layer}
           {@const rows = getLayerRows(layer)}
           {@const pageRows = getPagedRows(rows)}
           <section class="space-y-1.5">
-            <div class="px-1 text-[10px] tracking-wide uppercase text-gray-300 truncate">{layer.name}</div>
+            <div class={`px-1 text-[10px] tracking-wide uppercase truncate ${theme === 'light' ? 'text-slate-500' : 'text-gray-300'}`}>{layer.name}</div>
             {#if pageRows.length === 0}
-              <div class="px-1 text-[11px] text-gray-500">当前筛选下无图例项</div>
+              <div class={`px-1 text-[11px] ${theme === 'light' ? 'text-slate-500' : 'text-gray-500'}`}>当前筛选下无图例项</div>
             {:else}
-              <div class="flex flex-wrap gap-1.5">
+              <div class="space-y-1">
                 {#each pageRows as row}
                   <button
-                    class={`inline-flex max-w-full items-center gap-2 rounded-full border px-2.5 py-1 text-[11px] transition-colors ${
+                    class={`w-full inline-flex items-center gap-2 rounded border px-2 py-1.5 text-[11px] transition-colors ${
                       row.selected
-                        ? 'border-cyan-400/70 bg-cyan-500/20 text-cyan-50'
-                        : 'border-gray-600/70 bg-gray-800/65 text-gray-100 hover:border-gray-500 hover:bg-gray-700/75'
+                        ? (theme === 'light'
+                          ? 'border-cyan-400 bg-cyan-50 text-cyan-800'
+                          : 'border-cyan-400/70 bg-cyan-500/20 text-cyan-50')
+                        : (theme === 'light'
+                          ? 'border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100'
+                          : 'border-gray-600/70 bg-gray-800/65 text-gray-100 hover:border-gray-500 hover:bg-gray-700/75')
                     }`}
                     on:click={() => selectLegendRow(row)}
                     title={`${row.label} · ${row.count}项${row.searchText ? ` · ${row.searchText}` : ''}${row.nodeIds.length > 0 ? ' · 点击联动到树节点' : ' · 无法定位到树节点'}`}
                   >
                     <span
-                      class={`inline-block h-2.5 w-2.5 rounded-full ${row.selected ? 'ring-2 ring-cyan-200/70 ring-offset-1 ring-offset-gray-900' : ''}`}
+                      class={`inline-block h-2.5 w-2.5 rounded-sm ${row.selected ? (theme === 'light' ? 'ring-2 ring-cyan-300 ring-offset-1 ring-offset-white' : 'ring-2 ring-cyan-200/70 ring-offset-1 ring-offset-gray-900') : ''}`}
                       style={`background:${row.color};`}
                     ></span>
-                    <span class="truncate max-w-[180px]">{row.label}</span>
-                    <span class="text-[10px] text-gray-400">{row.count}</span>
+                    <span class="truncate flex-1 text-left">{row.label}</span>
+                    <span class={`text-[10px] ${theme === 'light' ? 'text-slate-500' : 'text-gray-400'}`}>{row.count}</span>
                   </button>
                 {/each}
               </div>

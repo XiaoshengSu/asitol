@@ -82,21 +82,21 @@
 
 <svelte:window on:keydown={handleKeydown} />
 
-<div class="h-screen bg-gray-900 flex flex-col min-h-0">
+<div class={`h-screen flex flex-col min-h-0 ${$uiStore.theme === 'light' ? 'bg-slate-100 text-slate-900' : 'bg-gray-900 text-white'}`}>
   {#if !canvasFullscreen}
-    <header class="bg-gray-800/95 border-b border-gray-700 px-3 py-2 flex items-center justify-between gap-3">
+    <header class={`border-b px-3 py-2 flex items-center justify-between gap-3 ${$uiStore.theme === 'light' ? 'bg-white/95 border-slate-200' : 'bg-gray-800/95 border-gray-700'}`}>
       <div class="flex items-center gap-3 min-w-0">
         <button
-          class="h-7 px-2 rounded bg-gray-700 hover:bg-gray-600 text-xs text-gray-200 whitespace-nowrap"
+          class={`h-7 px-2 rounded text-xs whitespace-nowrap ${$uiStore.theme === 'light' ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-gray-700 hover:bg-gray-600 text-gray-200'}` }
           on:click={toggleSidebar}
           title={sidebarCollapsed ? '展开左侧栏' : '收起左侧栏'}
         >
           {sidebarCollapsed ? '展开' : '收起'}
         </button>
-        <h1 class="text-lg font-bold text-white whitespace-nowrap">AS iTOL</h1>
+        <h1 class={`text-lg font-bold whitespace-nowrap ${$uiStore.theme === 'light' ? 'text-slate-900' : 'text-white'}`}>AS iTOL</h1>
         <nav class="flex items-center gap-2 min-w-0">
           <input
-            class="w-52 text-xs bg-gray-700 border border-gray-600 rounded px-2 py-1 text-gray-200 placeholder-gray-400"
+            class={`w-52 text-xs border rounded px-2 py-1 ${$uiStore.theme === 'light' ? 'bg-white border-slate-300 text-slate-700 placeholder-slate-400' : 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-400'}` }
             type="text"
             placeholder="搜索注释（仅交互）"
             value={$uiStore.searchQuery}
@@ -118,7 +118,7 @@
           </label>
 
           <select
-            class="text-xs bg-gray-700 border border-gray-600 rounded px-2 py-1 text-gray-200"
+            class={`text-xs border rounded px-2 py-1 ${$uiStore.theme === 'light' ? 'bg-white border-slate-300 text-slate-700' : 'bg-gray-700 border-gray-600 text-gray-200'}` }
             value={$uiStore.annotationRowsPerPage}
             on:change={handleRowsPerPageChange}
           >
@@ -145,16 +145,22 @@
           <button class="text-xs text-gray-300 hover:text-white" on:click={openExportDialog}>
             导出
           </button>
+          <button
+            class={`text-xs ${$uiStore.theme === 'light' ? 'text-slate-600 hover:text-slate-900' : 'text-gray-300 hover:text-white'}`}
+            on:click={() => uiStore.toggleTheme()}
+          >
+            {$uiStore.theme === 'light' ? '暗色' : '亮色'}
+          </button>
         </nav>
       </div>
-      <div class="text-xs text-gray-400 whitespace-nowrap">系统发育树可视化与注释工具</div>
+      <div class={`text-xs whitespace-nowrap ${$uiStore.theme === 'light' ? 'text-slate-500' : 'text-gray-400'}`}>系统发育树可视化与注释工具</div>
     </header>
   {/if}
 
   <main class="flex-1 flex overflow-hidden min-h-0">
     {#if !canvasFullscreen}
       <aside
-        class={`bg-gray-800/95 border-r border-gray-700 transition-all duration-150 ease-out overflow-hidden ${
+        class={`border-r transition-all duration-150 ease-out overflow-hidden ${$uiStore.theme === 'light' ? 'bg-white/95 border-slate-200' : 'bg-gray-800/95 border-gray-700'} ${
           sidebarCollapsed ? 'w-14' : 'w-[284px]'
         }`}
       >
@@ -193,9 +199,9 @@
           </div>
         {:else}
           <div class="h-full overflow-y-auto px-2 py-2 space-y-2">
-            <section class="rounded border border-gray-700/70 bg-gray-800/60">
+            <section class={`rounded border ${$uiStore.theme === 'light' ? 'border-slate-200 bg-white' : 'border-gray-700/70 bg-gray-800/60'}` }>
               <button
-                class="w-full text-left px-3 py-2 text-xs text-gray-200 font-medium border-b border-gray-700/70 hover:bg-gray-700/50"
+                class={`w-full text-left px-3 py-2 text-xs font-medium border-b ${$uiStore.theme === 'light' ? 'text-slate-700 border-slate-200 hover:bg-slate-50' : 'text-gray-200 border-gray-700/70 hover:bg-gray-700/50'}` }
                 on:click={() => (panelUploadOpen = !panelUploadOpen)}
               >
                 导入数据
@@ -207,9 +213,9 @@
               {/if}
             </section>
 
-            <section class="rounded border border-gray-700/70 bg-gray-800/60">
+            <section class={`rounded border ${$uiStore.theme === 'light' ? 'border-slate-200 bg-white' : 'border-gray-700/70 bg-gray-800/60'}` }>
               <button
-                class="w-full text-left px-3 py-2 text-xs text-gray-200 font-medium border-b border-gray-700/70 hover:bg-gray-700/50"
+                class={`w-full text-left px-3 py-2 text-xs font-medium border-b ${$uiStore.theme === 'light' ? 'text-slate-700 border-slate-200 hover:bg-slate-50' : 'text-gray-200 border-gray-700/70 hover:bg-gray-700/50'}` }
                 on:click={() => (panelControlOpen = !panelControlOpen)}
               >
                 树控制
@@ -221,9 +227,9 @@
               {/if}
             </section>
 
-            <section class="rounded border border-gray-700/70 bg-gray-800/60">
+            <section class={`rounded border ${$uiStore.theme === 'light' ? 'border-slate-200 bg-white' : 'border-gray-700/70 bg-gray-800/60'}` }>
               <button
-                class="w-full text-left px-3 py-2 text-xs text-gray-200 font-medium border-b border-gray-700/70 hover:bg-gray-700/50"
+                class={`w-full text-left px-3 py-2 text-xs font-medium border-b ${$uiStore.theme === 'light' ? 'text-slate-700 border-slate-200 hover:bg-slate-50' : 'text-gray-200 border-gray-700/70 hover:bg-gray-700/50'}` }
                 on:click={() => (panelLayerOpen = !panelLayerOpen)}
               >
                 图层管理
@@ -247,13 +253,13 @@
       {#if canvasFullscreen}
         <div class="absolute top-3 left-3 z-30 flex items-center gap-2">
           <button
-            class="px-3 py-1.5 rounded bg-gray-800/90 border border-gray-600 text-xs text-gray-200 hover:bg-gray-700/90"
+            class={`px-3 py-1.5 rounded border text-xs ${$uiStore.theme === 'light' ? 'bg-white/95 border-slate-300 text-slate-700 hover:bg-slate-100' : 'bg-gray-800/90 border-gray-600 text-gray-200 hover:bg-gray-700/90'}` }
             on:click={exitCanvasFullscreen}
           >
             退出全屏
           </button>
           <button
-            class="px-3 py-1.5 rounded bg-gray-800/90 border border-gray-600 text-xs text-gray-200 hover:bg-gray-700/90"
+            class={`px-3 py-1.5 rounded border text-xs ${$uiStore.theme === 'light' ? 'bg-white/95 border-slate-300 text-slate-700 hover:bg-slate-100' : 'bg-gray-800/90 border-gray-600 text-gray-200 hover:bg-gray-700/90'}` }
             on:click={openExportDialog}
           >
             导出

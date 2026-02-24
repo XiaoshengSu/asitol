@@ -18,6 +18,7 @@ const createUIStore = () => {
     showLabels: boolean;
     branchColor: string;
     branchColorMode: 'single' | 'clade';
+    theme: 'dark' | 'light';
   }>({
     sidebarVisible: true,
     layersPanelVisible: true,
@@ -31,7 +32,8 @@ const createUIStore = () => {
     annotationPage: 1,
     showLabels: true,
     branchColor: '#8f96a3',
-    branchColorMode: 'clade'
+    branchColorMode: 'clade',
+    theme: 'dark'
   });
 
   const getLongestLeafNameLength = (node: any): number => {
@@ -217,6 +219,8 @@ const createUIStore = () => {
     setBranchColor: (color: string) => update(state => ({ ...state, branchColor: color })),
     // 设置树枝配色模式
     setBranchColorMode: (mode: 'single' | 'clade') => update(state => ({ ...state, branchColorMode: mode })),
+    setTheme: (theme: 'dark' | 'light') => update(state => ({ ...state, theme })),
+    toggleTheme: () => update(state => ({ ...state, theme: state.theme === 'dark' ? 'light' : 'dark' })),
     // 重置状态
     reset: () => set({
       sidebarVisible: true,
@@ -231,7 +235,8 @@ const createUIStore = () => {
       annotationPage: 1,
       showLabels: true,
       branchColor: '#8f96a3',
-      branchColorMode: 'clade'
+      branchColorMode: 'clade',
+      theme: 'dark'
     })
   };
 };
