@@ -1,5 +1,5 @@
 import * as d3 from 'd3';
-import type { Tree, LayoutResult } from '../../types/tree';
+import type { Tree, LayoutResult, LayoutType } from '../../types/tree';
 import type { RenderConfig } from '../../types/layout';
 import type { AnnotationData } from '../../types/annotation';
 import { uiStore } from '../../stores/uiStore';
@@ -225,11 +225,7 @@ export class SVGRenderer {
         return ensureContrast(config.branchColor || '#888');
       })
       .attr('stroke-width', d => {
-        const targetDepth = nodeDepth.get(d.target) || 0;
-        const widthRatio = 1 - (targetDepth / depthRange);
-        const minWidth = baseBranchWidth * 0.5;
-        const maxWidth = baseBranchWidth * 2;
-        return Math.max(minWidth, minWidth + (maxWidth - minWidth) * widthRatio);
+        return this.getAdaptiveBranchWidth(d.source, d.target, tree.root.id, leafNodeIds, nodeDepth, depthRange, baseBranchWidth, layoutResult.type);
       })
       .attr('stroke-opacity', (layoutResult.type === 'circular' || layoutResult.type === 'radial') ? 0.75 : 1)
       .attr('fill', 'none');
@@ -415,6 +411,9 @@ export class SVGRenderer {
     nodeDepth: Map<string, number>,
     maxDepth: number
   ): void {
+    const leafNodes = Object.entries(layoutResult.nodes).filter(([id]) => isLeafNode(tree.root, id));
+    const leafNodeIds = new Set(leafNodes.map(([id]) => id));
+
     this.g.selectAll('.link')
       .data(layoutResult.links)
       .enter()
@@ -454,15 +453,19 @@ export class SVGRenderer {
         return ensureContrast(config.branchColor || '#888');
       })
       .attr('stroke-width', d => {
-        const targetDepth = nodeDepth.get(d.target) || 0;
-        const widthRatio = 1 - (targetDepth / Math.max(1, maxDepth));
-        const minWidth = branchWidth * 0.4;
-        const maxWidth = branchWidth * 1.6;
-        return Math.max(minWidth, minWidth + (maxWidth - minWidth) * widthRatio);
+        return this.getAdaptiveBranchWidth(
+          d.source,
+          d.target,
+          tree.root.id,
+          leafNodeIds,
+          nodeDepth,
+          Math.max(1, maxDepth),
+          branchWidth,
+          layoutResult.type
+        );
       })
       .attr('fill', 'none');
 
-    const leafNodes = Object.entries(layoutResult.nodes).filter(([id]) => isLeafNode(tree.root, id));
     const largeTreeNodeData = layoutResult.type === 'circular' && leafNodes.length > 300 ? [] : leafNodes;
 
     const largeNodeSize = nodeSize * 0.8;
@@ -733,9 +736,9 @@ export class SVGRenderer {
     
     const centerX = config.width / 2;
     const centerY = config.height / 2;
-    const translateX = centerX - nodePos.x;
-    const translateY = centerY - nodePos.y;
     const scale = 2;
+    const translateX = centerX - nodePos.x * scale;
+    const translateY = centerY - nodePos.y * scale;
     
     if (typeof uiStore !== 'undefined') {
       uiStore.selectNode(nodeId);
@@ -744,6 +747,40 @@ export class SVGRenderer {
     } else {
       this.updateTransform(`translate(${translateX}, ${translateY}) scale(${scale})`);
     }
+  }
+
+  private getAdaptiveBranchWidth(
+    sourceId: string,
+    targetId: string,
+    rootId: string,
+    leafNodeIds: Set<string>,
+    nodeDepth: Map<string, number>,
+    depthRange: number,
+    baseBranchWidth: number,
+    layoutType: LayoutType
+  ): number {
+    const targetDepth = nodeDepth.get(targetId) || 0;
+    const widthRatio = 1 - (targetDepth / Math.max(1, depthRange));
+
+    let minWidth = baseBranchWidth * 0.5;
+    let maxWidth = baseBranchWidth * 2;
+
+    // 圆形/径向树中主干层级感更重要：加粗靠近根节点的分支，
+    // 同时降低末端分支宽度，提升根分支与末端分支可辨识度。
+    if (layoutType === 'circular' || layoutType === 'radial') {
+      minWidth = baseBranchWidth * 0.4;
+      maxWidth = baseBranchWidth * 2.8;
+    }
+
+    let width = Math.max(minWidth, minWidth + (maxWidth - minWidth) * widthRatio);
+    if (sourceId === rootId) {
+      width *= 1.2;
+    }
+    if (leafNodeIds.has(targetId)) {
+      width *= 0.72;
+    }
+
+    return this.clamp(width, baseBranchWidth * 0.35, baseBranchWidth * 3.2);
   }
 
   private renderAnnotations(config: RenderConfig, cladeColorMap: Map<string, string> | null): void {
