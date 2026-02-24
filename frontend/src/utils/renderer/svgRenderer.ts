@@ -1145,19 +1145,6 @@ export class SVGRenderer {
     // The annotation ring sits outside treeMaxRadius + label clearance
     const ringRadius = treeMaxRadius + labelRadialClearance + layerOffset;
 
-    // Title at the top of the ring (angle = −90° = top)
-    const titleRadius = ringRadius + trackWidth / 2 + 10;
-    const titleAngle = -Math.PI / 2;
-    group.append('text')
-      .attr('x', treeCx + Math.cos(titleAngle) * titleRadius)
-      .attr('y', treeCy + Math.sin(titleAngle) * titleRadius)
-      .attr('fill', '#cbd5e1')
-      .attr('font-size', '9px')
-      .attr('font-weight', 600)
-      .attr('text-anchor', 'middle')
-      .attr('dominant-baseline', 'middle')
-      .text(annotation.name || annotation.type);
-
     // Sort leaves by angle relative to the true tree center
     const sortedLeaves = rows.sort((a, b) => {
       const angleA = Math.atan2(a.pos.y - treeCy, a.pos.x - treeCx);
@@ -1215,6 +1202,22 @@ export class SVGRenderer {
         .attr('stroke-width', 0.5);
       // ────────────────────────────────────────────────────────────────────
     });
+
+    // 圆形/径向树中，环形注释本身已表达图层信息；标题常与色带和标签竞争视觉空间。
+    // 默认不显示标题，仅在显式配置 showTitle=true 时渲染，并放在路径之后避免被遮挡。
+    if (annotation.config?.showTitle === true) {
+      const titleRadius = ringRadius + trackWidth / 2 + 10;
+      const titleAngle = -Math.PI / 2;
+      group.append('text')
+        .attr('x', treeCx + Math.cos(titleAngle) * titleRadius)
+        .attr('y', treeCy + Math.sin(titleAngle) * titleRadius)
+        .attr('fill', '#cbd5e1')
+        .attr('font-size', '9px')
+        .attr('font-weight', 600)
+        .attr('text-anchor', 'middle')
+        .attr('dominant-baseline', 'middle')
+        .text(annotation.name || annotation.type);
+    }
   }
 
   private getBranchColorForNode(nodeId: string, config: RenderConfig, cladeColorMap: Map<string, string> | null): string {

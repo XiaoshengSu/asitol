@@ -236,5 +236,13 @@
   on:mouseleave={handleMouseLeave}
   on:wheel={handleWheel}
   on:click={(e) => {
+    const target = e.target;
+    if (!(target instanceof Element)) return;
+
+    // 点击画布空白处时清空选中；点击节点/分支/标签/注释时保持当前选择
+    const isTreeElement = Boolean(target.closest('.node, .link, .label, .annotation-layer'));
+    if (!isTreeElement) {
+      uiStore.clearSelection();
+    }
   }}
 />
