@@ -238,7 +238,7 @@
     if (type === 'HEATMAP') {
       return {
         id: AUTO_ANNOTATION_ID,
-        name: '默认注释-进化距离热图',
+        name: '注释分组',
         type,
         data: Object.fromEntries(
           leafProfiles.map(item => [item.name, { value: item.distance / maxDistance }])
@@ -258,7 +258,7 @@
     if (type === 'BARCHART') {
       return {
         id: AUTO_ANNOTATION_ID,
-        name: '默认注释-进化距离条形图',
+        name: '注释分组',
         type,
         data: Object.fromEntries(
           leafProfiles.map(item => [item.name, { value: Math.round((item.distance / maxDistance) * 100) }])
@@ -277,7 +277,7 @@
 
     return {
       id: AUTO_ANNOTATION_ID,
-      name: '注释分组色带',
+      name: '注释分组',
       type: 'COLORSTRIP',
       data: Object.fromEntries(
         leafProfiles.map(item => {

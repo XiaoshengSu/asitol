@@ -35,31 +35,7 @@
     URL.revokeObjectURL(url);
   };
 
-  const handleAnnotationSearch = (event: Event) => {
-    const value = (event.currentTarget as HTMLInputElement).value;
-    uiStore.setSearchQuery(value);
-  };
 
-  const clearAnnotationSearch = () => {
-    uiStore.setSearchQuery('');
-  };
-
-  const handleAnnotationOnlySelected = (event: Event) => {
-    uiStore.setAnnotationOnlySelected((event.currentTarget as HTMLInputElement).checked);
-  };
-
-  const handleRowsPerPageChange = (event: Event) => {
-    const value = Number((event.currentTarget as HTMLSelectElement).value);
-    uiStore.setAnnotationRowsPerPage(value);
-  };
-
-  const prevAnnotationPage = () => {
-    uiStore.prevAnnotationPage();
-  };
-
-  const nextAnnotationPage = () => {
-    uiStore.nextAnnotationPage();
-  };
 
   const toggleSidebar = () => {
     sidebarCollapsed = !sidebarCollapsed;
@@ -84,72 +60,48 @@
 
 <div class={`h-screen flex flex-col min-h-0 ${$uiStore.theme === 'light' ? 'bg-slate-100 text-slate-900' : 'bg-gray-900 text-white'}`}>
   {#if !canvasFullscreen}
-    <header class={`border-b px-3 py-2 flex items-center justify-between gap-3 ${$uiStore.theme === 'light' ? 'bg-white/95 border-slate-200' : 'bg-gray-800/95 border-gray-700'}`}>
-      <div class="flex items-center gap-3 min-w-0">
+    <header class={`border-b px-4 py-2 flex items-center justify-between gap-4 ${$uiStore.theme === 'light' ? 'bg-white/95 border-slate-200 shadow-sm' : 'bg-gray-800/95 border-gray-700'}`}>
+      <div class="flex items-center gap-4 min-w-0">
         <button
-          class={`h-7 px-2 rounded text-xs whitespace-nowrap ${$uiStore.theme === 'light' ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-gray-700 hover:bg-gray-600 text-gray-200'}` }
+          class={`h-8 w-8 rounded-md flex items-center justify-center ${$uiStore.theme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' : 'bg-gray-700 hover:bg-gray-600 text-gray-200'}` }
           on:click={toggleSidebar}
           title={sidebarCollapsed ? '展开左侧栏' : '收起左侧栏'}
         >
-          {sidebarCollapsed ? '展开' : '收起'}
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="{sidebarCollapsed ? 'M12 4v16m8-8H4' : 'M4 6h16M4 12h16M4 18h16'}" />
+          </svg>
         </button>
         <h1 class={`text-lg font-bold whitespace-nowrap ${$uiStore.theme === 'light' ? 'text-slate-900' : 'text-white'}`}>AS iTOL</h1>
+        <div class="h-6 w-px bg-gray-300 dark:bg-gray-600"></div>
         <nav class="flex items-center gap-2 min-w-0">
-          <input
-            class={`w-52 text-xs border rounded px-2 py-1 ${$uiStore.theme === 'light' ? 'bg-white border-slate-300 text-slate-700 placeholder-slate-400' : 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-400'}` }
-            type="text"
-            placeholder="搜索注释（仅交互）"
-            value={$uiStore.searchQuery}
-            on:input={handleAnnotationSearch}
-          />
-          {#if $uiStore.searchQuery}
-            <button class="text-xs text-gray-300 hover:text-white" on:click={clearAnnotationSearch}>
-              清空
-            </button>
-          {/if}
-
-          <label class="text-xs text-gray-300 flex items-center gap-1 whitespace-nowrap">
-            <input
-              type="checkbox"
-              checked={$uiStore.annotationOnlySelected}
-              on:change={handleAnnotationOnlySelected}
-            />
-            仅选中
-          </label>
-
-          <select
-            class={`text-xs border rounded px-2 py-1 ${$uiStore.theme === 'light' ? 'bg-white border-slate-300 text-slate-700' : 'bg-gray-700 border-gray-600 text-gray-200'}` }
-            value={$uiStore.annotationRowsPerPage}
-            on:change={handleRowsPerPageChange}
-          >
-            <option value={50}>50/页</option>
-            <option value={80}>80/页</option>
-            <option value={120}>120/页</option>
-            <option value={200}>200/页</option>
-          </select>
-
           <button
-            class="text-xs text-gray-300 hover:text-white disabled:opacity-40"
-            on:click={prevAnnotationPage}
-            disabled={$uiStore.annotationPage <= 1}
+            class={`px-3 py-1.5 rounded-md text-sm ${$uiStore.theme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' : 'bg-gray-700 hover:bg-gray-600 text-gray-200'}`}
+            on:click={enterCanvasFullscreen}
+            title="画布全屏"
           >
-            上一页
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3" />
+            </svg>
+            全屏
           </button>
-          <span class="text-xs text-gray-400 min-w-8 text-center">{$uiStore.annotationPage}</span>
-          <button class="text-xs text-gray-300 hover:text-white" on:click={nextAnnotationPage}>
-            下一页
-          </button>
-          <button class="text-xs text-gray-300 hover:text-white" on:click={enterCanvasFullscreen}>
-            画布全屏
-          </button>
-          <button class="text-xs text-gray-300 hover:text-white" on:click={openExportDialog}>
+          <button
+            class={`px-3 py-1.5 rounded-md text-sm ${$uiStore.theme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' : 'bg-gray-700 hover:bg-gray-600 text-gray-200'}`}
+            on:click={openExportDialog}
+            title="导出树"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
             导出
           </button>
           <button
-            class={`text-xs ${$uiStore.theme === 'light' ? 'text-slate-600 hover:text-slate-900' : 'text-gray-300 hover:text-white'}`}
+            class={`p-1.5 rounded-md ${$uiStore.theme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' : 'bg-gray-700 hover:bg-gray-600 text-gray-200'}`}
             on:click={() => uiStore.toggleTheme()}
+            title="切换主题"
           >
-            {$uiStore.theme === 'light' ? '暗色' : '亮色'}
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="{$uiStore.theme === 'light' ? 'M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z' : 'M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z'}" />
+            </svg>
           </button>
         </nav>
       </div>
