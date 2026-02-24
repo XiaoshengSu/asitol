@@ -1,6 +1,7 @@
 import { writable, derived } from 'svelte/store';
 import type { RenderMode } from '../types/layout';
 import { treeStore } from './treeStore';
+import { annotationStore } from './annotationStore';
 
 // 创建界面状态存储
 const createUIStore = () => {
@@ -49,6 +50,23 @@ const createUIStore = () => {
       maxLength = Math.max(maxLength, getLongestLeafNameLength(child));
     }
     return maxLength;
+  };
+
+  const getVisibleAnnotationWidth = (): number => {
+    let layers: Array<{ visible: boolean; data?: { config?: { width?: number } } }> = [];
+    annotationStore.subscribe(state => {
+      layers = state.layers as Array<{ visible: boolean; data?: { config?: { width?: number } } }>;
+    })();
+
+    const visible = layers.filter(layer => layer.visible);
+    if (visible.length === 0) return 0;
+
+    const layerGap = 12;
+    const widthSum = visible.reduce((sum, layer) => {
+      const width = Number(layer?.data?.config?.width ?? 20);
+      return sum + Math.max(8, Math.min(72, Number.isFinite(width) ? width : 20));
+    }, 0);
+    return widthSum + layerGap * Math.max(0, visible.length - 1);
   };
 
   return {
@@ -140,6 +158,16 @@ const createUIStore = () => {
             leftExtra = 16;
             topExtra = 20;
             bottomExtra = 20;
+          } else {
+            // Circular/radial/unrooted: reserve radial space for labels + annotation ring.
+            const longestLeafName = getLongestLeafNameLength(treeState?.tree?.root);
+            const labelReserve = Math.min(220, Math.max(48, 12 + longestLeafName * 5.2));
+            const ringReserve = Math.max(0, getVisibleAnnotationWidth()) + 26;
+            const radialReserve = labelReserve + ringReserve;
+            leftExtra = radialReserve;
+            rightExtra = radialReserve;
+            topExtra = radialReserve;
+            bottomExtra = radialReserve;
           }
 
           const contentWidth = Math.max(1, bounds.width + leftExtra + rightExtra);
