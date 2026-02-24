@@ -161,9 +161,6 @@ export class SVGRenderer {
 
     const leafNodeIds = new Set(Object.keys(layoutResult.nodes).filter(id => isLeafNode(tree.root, id)));
     
-    const circularLeafIds = (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted')
-      ? leafNodeIds
-      : new Set<string>();
 
     // FIX: Use pure radial direction (node → away from tree center) for label
     // alignment in circular/radial/unrooted layouts.
@@ -1224,7 +1221,7 @@ export class SVGRenderer {
       : sorted[middle];
   }
 
-  private rebuildNodeIndexes(tree: Tree): void {
+  public rebuildNodeIndexes(tree: Tree): void {
     this.nodeNameById.clear();
     this.leafNodeIdSet.clear();
 
@@ -1241,9 +1238,9 @@ export class SVGRenderer {
     }
   }
 
-  private tree: any = null;
-  private nodes: Record<string, { x: number; y: number }> | null = null;
-  private layoutType: LayoutResult['type'] = 'rectangular';
+  public tree: any = null;
+  public nodes: Record<string, { x: number; y: number }> | null = null;
+  public layoutType: LayoutResult['type'] = 'rectangular';
   private nodeNameById = new Map<string, string>();
   private leafNodeIdSet = new Set<string>();
 }
