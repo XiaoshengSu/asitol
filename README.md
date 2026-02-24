@@ -105,9 +105,10 @@ AS ITOL (Advanced Systematics Interactive Tree Of Life) 是一款功能强大的
 ## 技术架构
 
 - **前端**：Svelte + TypeScript + D3.js
-- **后端**：Go + Gin + GORM
-- **数据存储**：SQLite (本地) / PostgreSQL (生产)
 - **渲染引擎**：SVG + Canvas 双模式
+- **数据存储**：本地存储（浏览器 LocalStorage）
+
+> 注：项目目前仅包含前端，后端功能计划在未来版本中开发。
 
 ## 浏览器兼容性
 
@@ -132,8 +133,8 @@ AS ITOL (Advanced Systematics Interactive Tree Of Life) 是一款功能强大的
 
 ## 联系方式
 
-- 项目主页：https://github.com/yourusername/as-itol
-- 问题反馈：https://github.com/yourusername/as-itol/issues
+- 项目主页：https://github.com/XiaoshengSu/asitol
+- 问题反馈：https://github.com/XiaoshengSu/asitol/issues
 
 ## 🚀 未来计划
 
