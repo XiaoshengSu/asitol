@@ -83,6 +83,55 @@ export class SVGRenderer {
     };
   }
 
+  /**
+   * Compute the translate needed to center the tree bounding box inside the canvas,
+   * then reset uiStore pan/zoom so the external zoom state machine is in sync.
+   *
+   * Why this is needed:
+   *   Layout algorithms produce node coordinates in their own space (e.g. starting
+   *   from an arbitrary origin).  When the user switches layout types the old
+   *   pan/zoom stored in uiStore is still applied by updateTransform(), causing
+   *   the new tree to appear off-screen until the user clicks "Reset".
+   *   By pushing identity zoom + centering translate into uiStore immediately after
+   *   each render we make every layout "just appear" correctly.
+   */
+  private autoCenter(config: RenderConfig): void {
+    const allNodes = Object.values(this.nodes || {});
+    if (allNodes.length === 0) return;
+
+    const xs = allNodes.map(p => p.x);
+    const ys = allNodes.map(p => p.y);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+
+    // Add generous padding so labels / annotation rings are not clipped
+    const PADDING = 80;
+    const treeW = maxX - minX + PADDING * 2;
+    const treeH = maxY - minY + PADDING * 2;
+
+    // Fit-to-viewport scale (never enlarge beyond 1× for small trees)
+    const scaleX = config.width  / treeW;
+    const scaleY = config.height / treeH;
+    const scale  = Math.min(1, scaleX, scaleY);
+
+    // After scaling, translate so the tree center aligns with the canvas center
+    const treeCx = (minX + maxX) / 2;
+    const treeCy = (minY + maxY) / 2;
+    const tx = config.width  / 2 - treeCx * scale;
+    const ty = config.height / 2 - treeCy * scale;
+
+    if (typeof uiStore !== 'undefined') {
+      // Push into the store so subsequent pan/zoom gestures start from here
+      uiStore.setZoom(scale);
+      uiStore.setPan({ x: tx, y: ty });
+    } else {
+      // Fallback: apply directly when there is no store
+      this.g.attr('transform', `translate(${tx},${ty}) scale(${scale})`);
+    }
+  }
+
   private doRender(tree: Tree, layoutResult: LayoutResult, config: RenderConfig): void {
     this.g.selectAll('*').remove();
     this.svg.selectAll('.annotation-layer').remove();
@@ -116,24 +165,27 @@ export class SVGRenderer {
       ? leafNodeIds
       : new Set<string>();
 
+    // FIX: Use pure radial direction (node → away from tree center) for label
+    // alignment in circular/radial/unrooted layouts.
+    //
+    // The previous approach used the parent→child branch vector, which works for
+    // the last straight segment but fails whenever the layout uses elbow/L-shape
+    // connections: the parent position is the *bend point*, not the true center,
+    // so the angle deviates from the true radial direction and labels appear
+    // misaligned with their branches.
+    //
+    // The correct reference direction for a radially arranged label is always the
+    // vector from the tree's geometric center outward through the leaf node.
+    // This guarantees label text is collinear with the radial branch tip regardless
+    // of how the internal branches are routed.
     const labelDirection = new Map<string, { angle: number; ux: number; uy: number }>();
     if (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted') {
-      const parentById = new Map<string, string>();
-      layoutResult.links.forEach(link => parentById.set(link.target, link.source));
+      const { cx: treeCxLabel, cy: treeCyLabel } = this.computeTreeCenter();
       Object.entries(layoutResult.nodes).forEach(([id, pos]) => {
-        const parentId = parentById.get(id);
-        const parentPos = parentId ? layoutResult.nodes[parentId] : null;
-        if (parentPos) {
-          const dx = pos.x - parentPos.x;
-          const dy = pos.y - parentPos.y;
-          const len = Math.hypot(dx, dy) || 1;
-          labelDirection.set(id, { angle: Math.atan2(dy, dx), ux: dx / len, uy: dy / len });
-        } else {
-          const dx = pos.x - centerX;
-          const dy = pos.y - centerY;
-          const len = Math.hypot(dx, dy) || 1;
-          labelDirection.set(id, { angle: Math.atan2(dy, dx), ux: dx / len, uy: dy / len });
-        }
+        const dx = pos.x - treeCxLabel;
+        const dy = pos.y - treeCyLabel;
+        const len = Math.hypot(dx, dy) || 1;
+        labelDirection.set(id, { angle: Math.atan2(dy, dx), ux: dx / len, uy: dy / len });
       });
     }
 
@@ -336,6 +388,13 @@ export class SVGRenderer {
       this.renderAnnotations(config, cladeColorMap);
     }
 
+    // Auto-center rectangular and unrooted layouts on every fresh render.
+    // Circular / radial layouts are already produced centered in their own
+    // coordinate space by the layout algorithm, so they don't need this.
+    if (layoutResult.type === 'rectangular' || layoutResult.type === 'unrooted') {
+      this.autoCenter(config);
+    }
+
     if (typeof uiStore !== 'undefined') {
       setTimeout(() => {
         let selectedNodes: string[] = [];
@@ -479,24 +538,27 @@ export class SVGRenderer {
     let showLabels = true;
     uiStore.subscribe(state => showLabels = state.showLabels)();
 
+    // FIX: Use pure radial direction (node → away from tree center) for label
+    // alignment in circular/radial/unrooted layouts.
+    //
+    // The previous approach used the parent→child branch vector, which works for
+    // the last straight segment but fails whenever the layout uses elbow/L-shape
+    // connections: the parent position is the *bend point*, not the true center,
+    // so the angle deviates from the true radial direction and labels appear
+    // misaligned with their branches.
+    //
+    // The correct reference direction for a radially arranged label is always the
+    // vector from the tree's geometric center outward through the leaf node.
+    // This guarantees label text is collinear with the radial branch tip regardless
+    // of how the internal branches are routed.
     const labelDirection = new Map<string, { angle: number; ux: number; uy: number }>();
     if (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted') {
-      const parentById = new Map<string, string>();
-      layoutResult.links.forEach(link => parentById.set(link.target, link.source));
+      const { cx: treeCxLabel, cy: treeCyLabel } = this.computeTreeCenter();
       Object.entries(layoutResult.nodes).forEach(([id, pos]) => {
-        const parentId = parentById.get(id);
-        const parentPos = parentId ? layoutResult.nodes[parentId] : null;
-        if (parentPos) {
-          const dx = pos.x - parentPos.x;
-          const dy = pos.y - parentPos.y;
-          const len = Math.hypot(dx, dy) || 1;
-          labelDirection.set(id, { angle: Math.atan2(dy, dx), ux: dx / len, uy: dy / len });
-        } else {
-          const dx = pos.x - centerX;
-          const dy = pos.y - centerY;
-          const len = Math.hypot(dx, dy) || 1;
-          labelDirection.set(id, { angle: Math.atan2(dy, dx), ux: dx / len, uy: dy / len });
-        }
+        const dx = pos.x - treeCxLabel;
+        const dy = pos.y - treeCyLabel;
+        const len = Math.hypot(dx, dy) || 1;
+        labelDirection.set(id, { angle: Math.atan2(dy, dx), ux: dx / len, uy: dy / len });
       });
     }
 
@@ -544,6 +606,10 @@ export class SVGRenderer {
       this.renderAnnotations(config, cladeColorMap);
     }
     this.applySelectedNodeStyles(largeNodeSize);
+
+    if (layoutResult.type === 'rectangular' || layoutResult.type === 'unrooted') {
+      this.autoCenter(config);
+    }
   }
 
   private selectCircularLabels(
@@ -586,12 +652,6 @@ export class SVGRenderer {
     return isLargeTree ? 10 : 12;
   }
 
-  private shortestArcSweep(sourceAngle: number, targetAngle: number): number {
-    let delta = targetAngle - sourceAngle;
-    while (delta > Math.PI) delta -= 2 * Math.PI;
-    while (delta < -Math.PI) delta += 2 * Math.PI;
-    return delta;
-  }
 
   updateTransform(transform: string): void {
     if (transform) {
@@ -742,9 +802,165 @@ export class SVGRenderer {
     const layerGap = 12;
     const layerOffset = layerIndex * (trackWidth + layerGap);
     const backgroundColor = config.backgroundColor || '#242424';
-    
-    if (this.layoutType === 'circular' || this.layoutType === 'radial' || this.layoutType === 'unrooted') {
+
+    if (this.layoutType === 'rectangular') {
+      // Rectangular tree: vertical color-strip column to the right of leaf labels
+      this.renderRectangularAnnotationStrip(group, annotation, config, cladeColorMap, rows, trackWidth, layerOffset, backgroundColor);
+    } else {
+      // Circular, radial, unrooted: concentric annotation ring
       this.renderCircularAnnotationRing(group, annotation, config, cladeColorMap, trackWidth, layerOffset, backgroundColor);
+    }
+  }
+
+  /**
+   * Rectangular-tree annotation: a vertical strip of colored rectangles
+   * aligned with each leaf row, placed to the right of the longest label.
+   *
+   * Layout:
+   *   leafMaxX  +  labelReserve  +  stripGap  +  [strip0 | gap | strip1 | ...]
+   *
+   * Each rectangle height matches the vertical spacing between adjacent leaves
+   * (with 1px gap) so rows are visually distinct.
+   */
+  /**
+   * Rectangular-tree annotation strip (vertical color column).
+   *
+   * Design principle — merge consecutive rows of the same group:
+   *   When a taxon group (e.g. "Primates") occupies many consecutive leaf rows,
+   *   drawing one rect per row produces a solid block visually, BUT when groups
+   *   are few and leaves are densely packed the row rects run edge-to-edge and
+   *   the 1px gaps become invisible noise.  Worse, when groups are few and rows
+   *   are tall the gaps look like deliberate empty bands.
+   *
+   *   Solution: run-length encode rows by resolved fill color, then draw a single
+   *   merged rectangle per contiguous same-color run.  A small fixed gap (2px) is
+   *   left between different-group blocks regardless of row density, making group
+   *   boundaries crisp without wasting space inside a group.
+   *
+   *   For HEATMAP / BARCHART every row has a distinct value so no merging happens
+   *   (each row stays independent with 1px gap), which is the correct behaviour.
+   */
+  private renderRectangularAnnotationStrip(
+    group: d3.Selection<SVGGElement, unknown, null, undefined>,
+    annotation: AnnotationData,
+    config: RenderConfig,
+    cladeColorMap: Map<string, string> | null,
+    rows: Array<{ id: string; pos: { x: number; y: number }; nodeData: any }>,
+    trackWidth: number,
+    layerOffset: number,
+    backgroundColor: string
+  ): void {
+    if (rows.length === 0) return;
+
+    // ── Position: place strip after the longest leaf label ───────────────────
+    const showLabels = this.getShowLabels();
+    const CHAR_WIDTH_PX = 6.4;
+    const LABEL_START_OFFSET = 22;
+    let maxLabelLen = 0;
+    rows.forEach(row => {
+      const name = this.nodeNameById.get(row.id) || '';
+      if (name.length > maxLabelLen) maxLabelLen = name.length;
+    });
+    const labelReserve = showLabels ? this.clamp(maxLabelLen * CHAR_WIDTH_PX, 60, 260) : 0;
+    const leafMaxX = Math.max(...rows.map(r => r.pos.x));
+    const STRIP_GAP = 16;
+    const baseX = leafMaxX + LABEL_START_OFFSET + labelReserve + STRIP_GAP + layerOffset;
+
+    // ── Row metrics ──────────────────────────────────────────────────────────
+    // rowSpacing: median vertical distance between adjacent leaf rows (px)
+    const rowSpacing = this.getAnnotationRowHeight(rows) / 0.72; // undo clamp factor to get raw gap
+    const GROUP_GAP = 2; // px gap between different-color blocks
+
+    // ── Resolve fill color for every row ─────────────────────────────────────
+    const isContinuous = annotation.type === 'HEATMAP' || annotation.type === 'BARCHART';
+    const resolvedRows = rows.map(row => {
+      const branchColor = this.getBranchColorForNode(row.id, config, cladeColorMap);
+      const baseColor = this.getLinkedColor(branchColor, row.nodeData?.color, annotation);
+      let fillColor = ensureContrast(baseColor, backgroundColor);
+
+      if (annotation.type === 'HEATMAP' && row.nodeData?.value !== undefined) {
+        const ratio = this.normalizeValue(row.nodeData.value, annotation.config?.minValue, annotation.config?.maxValue, 1);
+        const hsl = d3.hsl(branchColor);
+        const low  = d3.hsl(hsl.h, this.clamp(hsl.s * 0.25, 0.14, 0.35), 0.2).formatHex();
+        const high = d3.hsl(hsl.h, this.clamp(hsl.s * 1.05, 0.55, 0.95), 0.75).formatHex();
+        fillColor = ensureContrast(d3.interpolateHsl(low, high)(ratio), backgroundColor);
+      } else if (annotation.type === 'BARCHART' && row.nodeData?.value !== undefined) {
+        const ratio = this.normalizeValue(row.nodeData.value, annotation.config?.minValue, annotation.config?.maxValue, 1);
+        const hsl = d3.hsl(branchColor);
+        fillColor = ensureContrast(
+          d3.hsl(hsl.h, this.clamp(hsl.s * 0.9, 0.4, 0.95), this.clamp(0.36 + ratio * 0.33, 0.34, 0.76)).formatHex(),
+          backgroundColor
+        );
+      }
+      return { ...row, fillColor };
+    });
+
+    // ── Column title ─────────────────────────────────────────────────────────
+    const titleY = resolvedRows[0].pos.y - rowSpacing - 4;
+    group.append('text')
+      .attr('x', baseX + trackWidth / 2)
+      .attr('y', titleY)
+      .attr('fill', '#cbd5e1')
+      .attr('font-size', '9px')
+      .attr('font-weight', 600)
+      .attr('text-anchor', 'middle')
+      .attr('dominant-baseline', 'auto')
+      .text(annotation.name || annotation.type);
+
+    // ── Draw rectangles ───────────────────────────────────────────────────────
+    if (isContinuous) {
+      // Continuous scale: one slim rect per row with 1px inter-row gap
+      resolvedRows.forEach(row => {
+        const rectH = Math.max(2, rowSpacing - 1);
+        group.append('rect')
+          .attr('x', baseX)
+          .attr('y', row.pos.y - rectH / 2)
+          .attr('width', trackWidth)
+          .attr('height', rectH)
+          .attr('fill', row.fillColor)
+          .attr('stroke', d3.hsl(row.fillColor).darker(0.6).formatHex())
+          .attr('stroke-width', 0.3)
+          .attr('rx', 0);
+      });
+    } else {
+      // Categorical: run-length encode by color, merge each run into one block.
+      // Between different-color blocks leave GROUP_GAP px so group boundaries
+      // are always visible even when leaves are densely packed.
+      type Run = { fillColor: string; startY: number; endY: number };
+      const runs: Run[] = [];
+      let cur: Run | null = null;
+
+      resolvedRows.forEach((row, i) => {
+        const halfRow = rowSpacing / 2;
+        const top    = row.pos.y - halfRow;
+        const bottom = row.pos.y + halfRow;
+
+        if (!cur || cur.fillColor !== row.fillColor) {
+          if (cur) runs.push(cur);
+          cur = { fillColor: row.fillColor, startY: top, endY: bottom };
+        } else {
+          cur.endY = bottom; // extend current run
+        }
+        if (i === resolvedRows.length - 1 && cur) runs.push(cur);
+      });
+
+      runs.forEach((run, i) => {
+        const isLast = i === runs.length - 1;
+        // Inset top/bottom by half GROUP_GAP so adjacent blocks have a clean gap
+        const inset = runs.length > 1 ? GROUP_GAP / 2 : 0;
+        const y = run.startY + inset;
+        const h = Math.max(2, run.endY - run.startY - inset * 2);
+        const fill = run.fillColor;
+        group.append('rect')
+          .attr('x', baseX)
+          .attr('y', y)
+          .attr('width', trackWidth)
+          .attr('height', h)
+          .attr('fill', fill)
+          .attr('stroke', d3.hsl(fill).darker(0.5).formatHex())
+          .attr('stroke-width', 0.4)
+          .attr('rx', 2);
+      });
     }
   }
 
@@ -784,31 +1000,6 @@ export class SVGRenderer {
     }
     const medianGap = this.median(gaps);
     return this.clamp(medianGap * 0.72, 4, 12);
-  }
-
-  private getAnnotationBaseX(
-    rows: Array<{ id: string; pos: { x: number; y: number } }>,
-    position: 'left' | 'right',
-    config: RenderConfig,
-    trackWidth: number,
-    layerOffset: number
-  ): number {
-    const minX = d3.min(rows, row => row.pos.x) ?? 0;
-    const maxX = d3.max(rows, row => row.pos.x) ?? 0;
-    const showLabels = this.getShowLabels();
-    const longestName = rows.reduce((maxLength, row) => {
-      const length = (this.nodeNameById.get(row.id) || '').length;
-      return Math.max(maxLength, length);
-    }, 0);
-    const labelReserve = showLabels ? this.clamp(longestName * 6.4, 72, 260) : 28;
-    const viewportPadding = 12;
-    const treeAnnotationGap = 16;
-
-    const rawX = position === 'left'
-      ? minX - treeAnnotationGap - trackWidth - layerOffset
-      : maxX + treeAnnotationGap + (this.layoutType === 'rectangular' ? labelReserve : 0) + layerOffset;
-
-    return this.clamp(rawX, viewportPadding, Math.max(viewportPadding, config.width - trackWidth - viewportPadding));
   }
 
   private getLinkedColor(branchColor: string, annotationColor: unknown, annotation: AnnotationData): string {
@@ -998,18 +1189,6 @@ export class SVGRenderer {
     return ensureContrast(color, config.backgroundColor || '#242424');
   }
 
-  private buildPiePalette(baseColor: string, count: number): string[] {
-    const hsl = d3.hsl(baseColor);
-    const offsets = [0, 24, -24, 48, -48, 72, -72];
-    return Array.from({ length: Math.max(1, count) }, (_, index) => {
-      const offset = offsets[index % offsets.length];
-      return d3.hsl(
-        (hsl.h + offset + 360) % 360,
-        this.clamp(hsl.s * 0.9, 0.45, 0.95),
-        this.clamp(0.44 + (index % 3) * 0.09, 0.35, 0.76)
-      ).formatHex();
-    });
-  }
 
   private normalizeValue(value: unknown, minValue?: number, maxValue?: number, defaultMax: number = 1): number {
     const numeric = Number(value);
