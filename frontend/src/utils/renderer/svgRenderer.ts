@@ -300,7 +300,6 @@ export class SVGRenderer {
             ${node.children && node.children.length > 0 ? `<div><strong>Children:</strong> ${node.children.length}</div>` : ''}
             ${node.length ? `<div><strong>Length:</strong> ${node.length}</div>` : ''}
             <div><small>Click to zoom in</small></div>
-            <div><small>Right click for more options</small></div>
           `);
         }
         d3.select(event.currentTarget)
@@ -532,7 +531,6 @@ export class SVGRenderer {
             ${node.children && node.children.length > 0 ? `<div><strong>Children:</strong> ${node.children.length}</div>` : ''}
             ${node.length ? `<div><strong>Length:</strong> ${node.length}</div>` : ''}
             <div><small>Click to zoom in</small></div>
-            <div><small>Right click for more options</small></div>
           `);
         }
         d3.select(event.currentTarget)
