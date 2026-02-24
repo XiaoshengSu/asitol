@@ -35,20 +35,41 @@
 
   // 订阅UI状态
   const unsubscribeUI = uiStore.subscribe($uiStore => {
+    const oldRenderMode = renderMode;
+    const oldBranchColor = branchColor;
+    const oldBranchColorMode = branchColorMode;
+    
     renderMode = $uiStore.renderMode;
     zoom = $uiStore.zoom;
     pan = $uiStore.pan;
     branchColor = $uiStore.branchColor;
     branchColorMode = $uiStore.branchColorMode;
-    // 当showLabels或branchColor变化时重新渲染树
+    
+    // 只在渲染模式或分支颜色变化时重新渲染树
+    // 缩放和平移只更新变换，不重新渲染
     if (renderer && tree && layoutResult) {
-      render();
+      if (oldRenderMode !== renderMode || oldBranchColor !== branchColor || oldBranchColorMode !== branchColorMode) {
+        render();
+      } else {
+        updateTransform();
+      }
     }
   });
 
   const unsubscribeAnnotation = annotationStore.subscribe(() => {
     if (renderer && tree && layoutResult) {
+      // 注释变化时重新渲染，但保留当前的缩放和平移状态
+      // 先保存当前的缩放和平移
+      const currentZoom = zoom;
+      const currentPan = pan;
+      
+      // 重新渲染
       render();
+      
+      // 恢复缩放和平移
+      setTimeout(() => {
+        updateTransform();
+      }, 0);
     }
   });
 
@@ -62,7 +83,7 @@
       nodeColor: '#fff',
       branchColor,
       branchColorMode,
-      annotationDisplayMode: 'legend',
+      annotationDisplayMode: 'inline',
       nodeSize: 4,
       branchWidth: 1
     };
@@ -86,7 +107,7 @@
       nodeColor: '#fff',
       branchColor,
       branchColorMode,
-      annotationDisplayMode: 'legend',
+      annotationDisplayMode: 'inline',
       nodeSize: 4,
       branchWidth: 1
     };
@@ -174,6 +195,21 @@
     isDragging = false;
   };
 
+  // 处理鼠标滚轮事件，实现缩放功能
+  const handleWheel = (e: WheelEvent) => {
+    e.preventDefault();
+    
+    // 计算缩放因子，鼠标滚轮向上为正，向下为负
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    
+    // 使用 update 方法来更新缩放值，这样可以确保获取到最新的值
+    uiStore.setZoom((zoom: number) => {
+      // 限制缩放范围，防止过度缩放
+      const newZoom = Math.max(0.1, Math.min(5, zoom * delta));
+      return newZoom;
+    });
+  };
+
   // 添加窗口大小变化监听器
   onMount(() => {
     if (typeof window !== 'undefined') {
@@ -198,8 +234,7 @@
   on:mousemove={handleMouseMove}
   on:mouseup={handleMouseUp}
   on:mouseleave={handleMouseLeave}
+  on:wheel={handleWheel}
   on:click={(e) => {
-    // 处理节点点击事件
-    // 实际项目中需要计算点击位置对应的节点
   }}
 />

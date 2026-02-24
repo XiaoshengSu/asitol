@@ -71,9 +71,18 @@ const createUIStore = () => {
         // 计算缩放比例的变化
         const zoomRatio = newZoom / state.zoom;
         
-        // 假设画布中心为默认值，实际使用时可以根据需要调整
-        const canvasCenterX = 400; // 假设画布宽度为800
-        const canvasCenterY = 300; // 假设画布高度为600
+        // 使用实际的画布中心，从树的布局配置中获取
+        let canvasCenterX = 400; // 默认值
+        let canvasCenterY = 300; // 默认值
+        
+        // 获取当前树的状态来获取实际的画布大小
+        let treeState: any;
+        treeStore.subscribe(state => treeState = state)();
+        
+        if (treeState?.layoutConfig) {
+          canvasCenterX = (treeState.layoutConfig.width || 800) / 2;
+          canvasCenterY = (treeState.layoutConfig.height || 600) / 2;
+        }
         
         // 计算新的平移位置，使缩放围绕画布中心进行
         const newPanX = canvasCenterX - (canvasCenterX - state.pan.x) * zoomRatio;

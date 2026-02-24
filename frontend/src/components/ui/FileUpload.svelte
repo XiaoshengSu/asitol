@@ -1,5 +1,5 @@
-﻿<script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+<script lang="ts">
+  import { createEventDispatcher, onDestroy } from 'svelte';
   import { treeStore } from '../../stores/treeStore';
   import { annotationStore } from '../../stores/annotationStore';
   import { parser } from '../../utils/parser';
@@ -16,34 +16,39 @@
   const EXAMPLE_NEWICK = '((((Human:0.1,Chimpanzee:0.12):0.08,Gorilla:0.2):0.3,Orangutan:0.5):0.2,((Mouse:0.6,Rat:0.62):0.1,((Dog:0.7,Cat:0.72):0.1,Cow:0.8):0.2):0.3);';
 
   const ANNOTATION_OPTIONS: Array<{ value: AnnotationType; label: string }> = [
-    { value: 'COLORSTRIP', label: '色带' },
-    { value: 'HEATMAP', label: '热图' },
-    { value: 'BARCHART', label: '条形图' },
-    { value: 'PIECHART', label: '饼图' },
-    { value: 'BINARY', label: '二进制' },
-    { value: 'STRIP', label: '条带' },
-    { value: 'ALIGNMENT', label: '序列比对' },
-    { value: 'CONNECTIONS', label: '连接' },
-    { value: 'POPUP', label: '弹窗' }
+    { value: 'COLORSTRIP', label: '类群分组（色带）' },
+    { value: 'HEATMAP', label: '保守性/丰度（热图）' },
+    { value: 'BARCHART', label: '丰度对比（条形图）' }
   ];
 
-  const SPECIES_META: Record<string, {
+  // 生物学意义的分组
+  const EXAMPLE_GROUPS = ['Primates', 'Rodents', 'Carnivora', 'Artiodactyla'];
+  const EXAMPLE_GROUP_COLORS: Record<string, string> = {
+    Primates: '#ef4444',    // 灵长类
+    Rodents: '#1d4ed8',      // 啮齿类
+    Carnivora: '#e879f9',    // 食肉目
+    Artiodactyla: '#22c55e'  // 偶蹄目
+  };
+  const DEFAULT_EXAMPLE_LEAVES = ['Human', 'Chimpanzee', 'Gorilla', 'Orangutan', 'Mouse', 'Rat', 'Dog', 'Cat', 'Cow'];
+
+  // 基于生物学分类的分组映射
+  const TAXONOMY_GROUP_MAP: Record<string, string> = {
+    Human: 'Primates',
+    Chimpanzee: 'Primates',
+    Gorilla: 'Primates',
+    Orangutan: 'Primates',
+    Mouse: 'Rodents',
+    Rat: 'Rodents',
+    Dog: 'Carnivora',
+    Cat: 'Carnivora',
+    Cow: 'Artiodactyla'
+  };
+
+  type ExampleProfile = {
     group: string;
     color: string;
     score: number;
     abundance: number;
-    binary: number;
-    pie: [number, number, number];
-  }> = {
-    Human: { group: 'Primates', color: '#ef4444', score: 0.92, abundance: 88, binary: 1, pie: [48, 32, 20] },
-    Chimpanzee: { group: 'Primates', color: '#ef4444', score: 0.9, abundance: 84, binary: 1, pie: [45, 35, 20] },
-    Gorilla: { group: 'Primates', color: '#ef4444', score: 0.86, abundance: 73, binary: 1, pie: [40, 37, 23] },
-    Orangutan: { group: 'Primates', color: '#ef4444', score: 0.81, abundance: 65, binary: 1, pie: [38, 34, 28] },
-    Mouse: { group: 'Rodentia', color: '#06b6d4', score: 0.42, abundance: 58, binary: 0, pie: [24, 46, 30] },
-    Rat: { group: 'Rodentia', color: '#06b6d4', score: 0.45, abundance: 61, binary: 0, pie: [27, 43, 30] },
-    Dog: { group: 'Carnivora', color: '#3b82f6', score: 0.67, abundance: 69, binary: 1, pie: [33, 42, 25] },
-    Cat: { group: 'Carnivora', color: '#3b82f6', score: 0.71, abundance: 72, binary: 1, pie: [35, 40, 25] },
-    Cow: { group: 'Artiodactyla', color: '#22c55e', score: 0.61, abundance: 76, binary: 0, pie: [29, 44, 27] }
   };
 
   let file: File | null = null;
@@ -52,8 +57,14 @@
   let uploadType: 'tree' | 'annotation' = 'tree';
   let annotationType: AnnotationType = 'COLORSTRIP';
   let exampleTreeMode = false;
+  let syncedAnnotationType: AnnotationType = annotationType;
   let fileInputEl: HTMLInputElement | null = null;
   let acceptedFileTypes = '.nwk,.newick,.txt';
+  let currentTree: Tree | null = null;
+
+  const unsubscribeTree = treeStore.subscribe(state => {
+    currentTree = state.tree;
+  });
 
   const getLayerSnapshot = () => {
     let layers: any[] = [];
@@ -80,7 +91,61 @@
     }
   };
 
+  const collectLeafNames = (node: any, names: string[]) => {
+    if (!node) return;
+    if (!node.children || node.children.length === 0) {
+      names.push((node.name || node.id || '').trim() || `leaf_${names.length + 1}`);
+      return;
+    }
+    node.children.forEach((child: any) => collectLeafNames(child, names));
+  };
+
+  const hashSeed = (text: string): number => {
+    let hash = 0;
+    for (let index = 0; index < text.length; index += 1) {
+      hash = (hash * 31 + text.charCodeAt(index)) >>> 0;
+    }
+    return hash;
+  };
+
+  const buildExampleProfiles = (): Record<string, ExampleProfile> => {
+    const leafNames: string[] = [];
+    collectLeafNames(currentTree?.root, leafNames);
+    const effectiveLeafNames = leafNames.length > 0 ? leafNames : DEFAULT_EXAMPLE_LEAVES;
+
+    return Object.fromEntries(
+      effectiveLeafNames.map((name, index) => {
+        // 基于生物学分类的分组
+        const group = TAXONOMY_GROUP_MAP[name] || 'Unknown';
+        const color = EXAMPLE_GROUP_COLORS[group] || '#a855f7';
+        
+        // 基于分组的有意义数据
+        const baseScore = group === 'Primates' ? 0.8 : 
+                        group === 'Rodents' ? 0.6 : 
+                        group === 'Carnivora' ? 0.7 : 0.5;
+        const baseAbundance = group === 'Primates' ? 80 : 
+                           group === 'Rodents' ? 60 : 
+                           group === 'Carnivora' ? 70 : 50;
+        
+        const seed = hashSeed(`${name}:${index}`);
+        const score = Math.min(0.98, baseScore + ((seed % 100) / 1000));
+        const abundance = baseAbundance + (seed % 20);
+        
+        return [name, { group, color, score, abundance }];
+      })
+    );
+  };
+
+  const getAnnotationHint = (type: AnnotationType): string => {
+    if (type === 'COLORSTRIP') return '用于分类变量分组（示例为动物分类学分组）。';
+    if (type === 'HEATMAP') return '用于连续变量（基因保守性、丰度、表达量）梯度展示。';
+    if (type === 'BARCHART') return '用于样本级数量比较（物种丰度、基因表达、测序深度）。';
+    return '';
+  };
+
   const buildExampleAnnotation = (type: AnnotationType): AnnotationData => {
+    const profiles = buildExampleProfiles();
+
     const baseConfig = {
       width: 18,
       position: 'right',
@@ -93,10 +158,10 @@
     if (type === 'HEATMAP') {
       return {
         id: EXAMPLE_ANNOTATION_ID,
-        name: '示例注释-热图',
+        name: '示例注释-保守性/丰度热图',
         type,
         data: Object.fromEntries(
-          Object.entries(SPECIES_META).map(([name, meta]) => [name, { value: meta.score }])
+          Object.entries(profiles).map(([name, meta]) => [name, { value: meta.score }])
         ),
         config: { ...baseConfig, minValue: 0, maxValue: 1, width: 20 }
       };
@@ -105,62 +170,23 @@
     if (type === 'BARCHART') {
       return {
         id: EXAMPLE_ANNOTATION_ID,
-        name: '示例注释-条形图',
+        name: '示例注释-丰度条形图',
         type,
         data: Object.fromEntries(
-          Object.entries(SPECIES_META).map(([name, meta]) => [name, { value: meta.abundance, color: meta.color }])
+          Object.entries(profiles).map(([name, meta]) => [name, { value: meta.abundance }])
         ),
         config: { ...baseConfig, minValue: 0, maxValue: 100, width: 36 }
       };
     }
 
-    if (type === 'BINARY') {
-      return {
-        id: EXAMPLE_ANNOTATION_ID,
-        name: '示例注释-二进制',
-        type,
-        data: Object.fromEntries(
-          Object.entries(SPECIES_META).map(([name, meta]) => [name, { value: meta.binary, color: meta.color }])
-        ),
-        config: { ...baseConfig, width: 14 }
-      };
-    }
-
-    if (type === 'PIECHART') {
-      return {
-        id: EXAMPLE_ANNOTATION_ID,
-        name: '示例注释-饼图',
-        type,
-        data: Object.fromEntries(
-          Object.entries(SPECIES_META).map(([name, meta]) => [name, {
-            values: meta.pie,
-            colors: ['#ef4444', '#06b6d4', '#22c55e']
-          }])
-        ),
-        config: { ...baseConfig, radius: 6, width: 20, showLegend: false }
-      };
-    }
-
-    if (type === 'STRIP') {
-      return {
-        id: EXAMPLE_ANNOTATION_ID,
-        name: '示例注释-条带',
-        type,
-        data: Object.fromEntries(
-          Object.entries(SPECIES_META).map(([name, meta]) => [name, { value: meta.group, color: meta.color }])
-        ),
-        config: { ...baseConfig, width: 26 }
-      };
-    }
-
     return {
       id: EXAMPLE_ANNOTATION_ID,
-      name: `示例注释-${type}`,
-      type,
+      name: '示例注释-色带',
+      type: 'COLORSTRIP',
       data: Object.fromEntries(
-        Object.entries(SPECIES_META).map(([name, meta]) => [name, { value: meta.group, color: meta.color }])
+        Object.entries(profiles).map(([name, meta]) => [name, { value: meta.group, color: meta.color }])
       ),
-      config: { ...baseConfig, width: 18 }
+      config: { ...baseConfig, width: 24 }
     };
   };
 
@@ -194,8 +220,9 @@
     dispatch('annotationLoaded', annotation);
   };
 
-  $: if (exampleTreeMode) {
+  $: if (exampleTreeMode && currentTree && syncedAnnotationType !== annotationType) {
     upsertExampleAnnotationLayer(annotationType);
+    syncedAnnotationType = annotationType;
   }
 
   $: acceptedFileTypes = uploadType === 'tree' ? '.nwk,.newick,.txt' : '.json,.txt';
@@ -221,6 +248,7 @@
     try {
       if (uploadType === 'tree') {
         exampleTreeMode = false;
+        syncedAnnotationType = annotationType;
         removeExampleAnnotation();
 
         const text = await file.text();
@@ -268,6 +296,7 @@
 
       exampleTreeMode = true;
       upsertExampleAnnotationLayer(annotationType);
+      syncedAnnotationType = annotationType;
     } catch (err) {
       error = `加载示例树失败: ${err instanceof Error ? err.message : '未知错误'}`;
       console.error('Load example tree error:', err);
@@ -275,6 +304,22 @@
       loading = false;
     }
   };
+
+  const applyExampleAnnotation = () => {
+    if (!currentTree) {
+      error = '请先加载树文件后再套用示例注释';
+      return;
+    }
+
+    error = null;
+    exampleTreeMode = true;
+    upsertExampleAnnotationLayer(annotationType);
+    syncedAnnotationType = annotationType;
+  };
+
+  onDestroy(() => {
+    unsubscribeTree();
+  });
 </script>
 
 <div class="space-y-2.5">
@@ -306,11 +351,18 @@
 
     {#if uploadType === 'tree'}
       <button
-        class="text-xs bg-gray-700 hover:bg-gray-600 text-white py-2 px-3 rounded disabled:opacity-50 whitespace-nowrap"
+        class="text-xs bg-gray-700 hover:bg-gray-600 text-white py-2 px-2 rounded disabled:opacity-50 whitespace-nowrap"
         on:click={loadExampleTree}
         disabled={loading}
       >
-        示例
+        示例树
+      </button>
+      <button
+        class="text-xs bg-gray-700 hover:bg-gray-600 text-white py-2 px-2 rounded disabled:opacity-50 whitespace-nowrap"
+        on:click={applyExampleAnnotation}
+        disabled={loading || !currentTree}
+      >
+        套用注释
       </button>
     {/if}
   </div>
@@ -334,9 +386,7 @@
   </div>
 
   <div class="flex items-center gap-2">
-    <span class="text-[11px] text-gray-400 whitespace-nowrap">
-      {uploadType === 'tree' ? '示例注释' : '注释类型'}
-    </span>
+    <span class="text-[11px] text-gray-400 whitespace-nowrap">注释方式</span>
     <select
       class="flex-1 text-xs bg-gray-700 text-gray-300 rounded p-1.5"
       bind:value={annotationType}
@@ -346,4 +396,6 @@
       {/each}
     </select>
   </div>
+
+  <div class="text-[10px] text-gray-500">{getAnnotationHint(annotationType)}</div>
 </div>
