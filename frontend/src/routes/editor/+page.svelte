@@ -7,11 +7,9 @@
   import FileUpload from '../../components/ui/FileUpload.svelte';
   import ExportDialog from '../../components/ui/ExportDialog.svelte';
   import { uiStore } from '../../stores/uiStore';
-  import type { RenderMode } from '../../types/layout';
 
   let exportDialog: any;
   let viewportEl: HTMLElement | null = null;
-  let renderMode: RenderMode = 'svg';
   let sidebarCollapsed = false;
   let canvasFullscreen = false;
   let panelUploadOpen = true;
@@ -35,10 +33,6 @@
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  };
-
-  const handleRenderModeChange = (mode: RenderMode) => {
-    renderMode = mode;
   };
 
   const handleAnnotationSearch = (event: Event) => {
@@ -222,7 +216,7 @@
               </button>
               {#if panelControlOpen}
                 <div class="p-2">
-                  <TreeControls on:renderModeChange={handleRenderModeChange} />
+                  <TreeControls />
                 </div>
               {/if}
             </section>
@@ -247,11 +241,7 @@
 
     <section bind:this={viewportEl} class="flex-1 min-w-0 min-h-0 relative">
       <TreeLayout {viewportEl} />
-      {#if renderMode === 'svg'}
-        <TreeSvg />
-      {:else}
-        <TreeCanvas />
-      {/if}
+      <TreeSvg />
       <AnnotationLegendLayer />
 
       {#if canvasFullscreen}
