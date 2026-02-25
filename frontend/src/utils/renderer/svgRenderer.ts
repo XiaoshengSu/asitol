@@ -296,11 +296,16 @@ export class SVGRenderer {
           .style('top', (event.pageY + 10) + 'px');
         const node = findNodeById(tree.root, d[0]);
         if (node) {
+          const lengthValue = (node as any).branchLength ?? (node as any).length;
+          const lengthHtml =
+            lengthValue !== null && lengthValue !== undefined && lengthValue !== 0
+              ? `<div><strong>Length:</strong> ${lengthValue}</div>`
+              : '';
           tooltip.html(`
             <div><strong>Name:</strong> ${node.name || 'Unnamed'}</div>
             <div><strong>ID:</strong> ${node.id}</div>
             ${node.children && node.children.length > 0 ? `<div><strong>Children:</strong> ${node.children.length}</div>` : ''}
-            ${node.length ? `<div><strong>Length:</strong> ${node.length}</div>` : ''}
+            ${lengthHtml}
             <div><small>Click to zoom in</small></div>
           `);
         }
@@ -458,7 +463,7 @@ export class SVGRenderer {
         }
 
         if (layoutResult.type === 'rectangular') {
-          const isTargetLeaf = !findNodeById(tree.root, d.target)?.children || findNodeById(tree.root, d.target)?.children.length === 0;
+          const isTargetLeaf = leafNodeIds.has(d.target);
           if (isTargetLeaf) {
             const horizontalEndX = Math.max(source.x, target.x) + 18;
             return `M ${source.x} ${source.y} L ${target.x} ${source.y} L ${target.x} ${target.y} L ${horizontalEndX} ${target.y}`;
@@ -529,11 +534,16 @@ export class SVGRenderer {
           .style('top', (event.pageY + 10) + 'px');
         const node = findNodeById(tree.root, d[0]);
         if (node) {
+          const lengthValue = (node as any).branchLength ?? (node as any).length;
+          const lengthHtml =
+            lengthValue !== null && lengthValue !== undefined && lengthValue !== 0
+              ? `<div><strong>Length:</strong> ${lengthValue}</div>`
+              : '';
           tooltip.html(`
             <div><strong>Name:</strong> ${node.name || 'Unnamed'}</div>
             <div><strong>ID:</strong> ${node.id}</div>
             ${node.children && node.children.length > 0 ? `<div><strong>Children:</strong> ${node.children.length}</div>` : ''}
-            ${node.length ? `<div><strong>Length:</strong> ${node.length}</div>` : ''}
+            ${lengthHtml}
             <div><small>Click to zoom in</small></div>
           `);
         }
@@ -730,7 +740,9 @@ export class SVGRenderer {
 
     const medianGap = this.median(gaps);
     const fontSizePx = isLargeTree ? 8 : 10;
-    const requiredSpacing = Math.max(6, fontSizePx * 0.9);
+    // 为了在大树上尽量多展示叶标签，这里放宽垂直间距要求：
+    // 允许标签行之间略有接触/轻微重叠，只在极端拥挤时才抽样隐藏部分标签。
+    const requiredSpacing = Math.max(4, fontSizePx * 0.7);
     if (medianGap >= requiredSpacing) {
       return sortedLabels;
     }

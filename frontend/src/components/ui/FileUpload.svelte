@@ -64,6 +64,7 @@
   let acceptedFileTypes = '.nwk,.newick,.txt';
   let currentTree: Tree | null = null;
   let theme: 'dark' | 'light' = 'dark';
+  let isDragOver = false;
 
   const unsubscribeTree = treeStore.subscribe(state => {
     currentTree = state.tree;
@@ -209,6 +210,128 @@
     return profiles;
   };
 
+  /**
+   * 基于树拓扑结构自动划分类群分组（不依赖名称），用于更专业的默认色带。
+   * 返回：leafId -> groupLabel 的映射；若无法得到合理分组则返回空 Map，调用方退回名称分组。
+   */
+  const buildTopologyGroups = (
+    tree: Tree,
+    leafProfiles: Array<{ id: string; name: string; distance: number }>
+  ): Map<string, string> => {
+    const leafIds = new Set(leafProfiles.map(item => item.id));
+    if (!tree?.root || leafIds.size === 0) return new Map();
+
+    type NodeInfo = {
+      node: any;
+      leafCount: number;
+      parentId: string | null;
+    };
+
+    const nodeInfoById = new Map<string, NodeInfo>();
+    const leafPaths = new Map<string, string[]>(); // leafId -> ancestor id path（root 不必重复存储）
+
+    const walk = (node: any, parentId: string | null, path: string[]): number => {
+      if (!node || !node.id) return 0;
+
+      const currentPath = path;
+      let leafCount = 0;
+
+      if (!node.children || node.children.length === 0) {
+        if (leafIds.has(node.id)) {
+          leafCount = 1;
+          leafPaths.set(node.id, currentPath);
+        }
+      } else {
+        const childPath = [...currentPath, node.id];
+        node.children.forEach((child: any) => {
+          leafCount += walk(child, node.id, childPath);
+        });
+      }
+
+      nodeInfoById.set(node.id, { node, leafCount, parentId });
+      return leafCount;
+    };
+
+    const totalLeaves = walk(tree.root, null, []);
+    if (totalLeaves <= 0) return new Map();
+
+    // 仅考虑叶子数在 [minLeaves, maxLeaves] 范围内的内部节点作为潜在主类群
+    const minLeaves = Math.max(3, Math.floor(totalLeaves / 30));
+    const maxLeaves = Math.max(minLeaves, Math.floor(totalLeaves * 0.8));
+
+    const candidates: Array<{ id: string; leafCount: number }> = [];
+    nodeInfoById.forEach((info, id) => {
+      if (!info.node?.children || info.node.children.length === 0) return;
+      if (id === tree.root.id) return;
+      if (info.leafCount >= minLeaves && info.leafCount <= maxLeaves) {
+        candidates.push({ id, leafCount: info.leafCount });
+      }
+    });
+
+    if (candidates.length === 0) {
+      return new Map();
+    }
+
+    // 较大的 clade 优先，限制分组数量以保证图例可读性（最多 8 个）
+    candidates.sort((a, b) => b.leafCount - a.leafCount);
+
+    const chosenIds: string[] = [];
+
+    const isAncestor = (maybeAncestorId: string, nodeId: string): boolean => {
+      let currentId: string | null = nodeInfoById.get(nodeId)?.parentId ?? null;
+      while (currentId) {
+        if (currentId === maybeAncestorId) return true;
+        currentId = nodeInfoById.get(currentId)?.parentId ?? null;
+      }
+      return false;
+    };
+
+    for (const candidate of candidates) {
+      const { id } = candidate;
+      let skip = false;
+      for (const chosenId of chosenIds) {
+        if (isAncestor(chosenId, id) || isAncestor(id, chosenId)) {
+          skip = true;
+          break;
+        }
+      }
+      if (!skip) {
+        chosenIds.push(id);
+        if (chosenIds.length >= 8) break;
+      }
+    }
+
+    // 如果无法形成至少两个非重叠主类群，则交给名称启发式逻辑处理
+    if (chosenIds.length < 2) {
+      return new Map();
+    }
+
+    // 为每个选中的内部节点生成分组名称：优先使用节点自身名称，否则回退到 Clade N
+    const labelByNodeId = new Map<string, string>();
+    chosenIds.forEach((id, index) => {
+      const info = nodeInfoById.get(id);
+      const rawName = (info?.node?.name || '').trim();
+      const label = rawName || `Clade ${index + 1}`;
+      labelByNodeId.set(id, label);
+    });
+
+    // 叶子归类：沿着 ancestor path 从下往上寻找最近的已选 clade
+    const topologyGroups = new Map<string, string>();
+    leafProfiles.forEach(profile => {
+      const path = leafPaths.get(profile.id) || [];
+      for (let idx = path.length - 1; idx >= 0; idx -= 1) {
+        const ancId = path[idx];
+        const label = labelByNodeId.get(ancId);
+        if (label) {
+          topologyGroups.set(profile.id, label);
+          return;
+        }
+      }
+    });
+
+    return topologyGroups;
+  };
+
   const buildAutoAnnotation = (tree: Tree, type: AnnotationType): AnnotationData => {
     const leafProfiles = collectLeafProfiles(tree);
     if (leafProfiles.length === 0) {
@@ -223,17 +346,8 @@
 
     const maxDistance = Math.max(...leafProfiles.map(item => item.distance), 0.001);
 
-    const grouped = new Map<string, number>();
-    leafProfiles.forEach(item => {
-      const group = inferGroupFromLeafName(item.name);
-      grouped.set(group, (grouped.get(group) || 0) + 1);
-    });
-
-    const sortedGroups = Array.from(grouped.entries()).sort((a, b) => b[1] - a[1]);
-    const keptGroups = sortedGroups.slice(0, 10).map(([group]) => group);
-    const colorMap = new Map<string, string>();
-    keptGroups.forEach((group, idx) => colorMap.set(group, getCategoryColor(idx)));
-    colorMap.set('Other', '#94a3b8');
+    // 数值型默认注释：继续使用“根到叶距离”作为默认连续变量，语义清晰为 distance-based
+    // （在 UI 文案中不再直接称为“丰度/保守性”，而是强调来自树距离）。
 
     if (type === 'HEATMAP') {
       return {
@@ -258,7 +372,7 @@
     if (type === 'BARCHART') {
       return {
         id: AUTO_ANNOTATION_ID,
-        name: '注释分组',
+        name: '距离型默认注释',
         type,
         data: Object.fromEntries(
           leafProfiles.map(item => [item.name, { value: Math.round((item.distance / maxDistance) * 100) }])
@@ -275,13 +389,37 @@
       };
     }
 
+    // 分类型默认色带：优先基于树拓扑自动识别主类群，不依赖命名；
+    // 若无法得到稳定拓扑分组，则退回到基于名称的启发式 grouping。
+    const topologyGroups = buildTopologyGroups(tree, leafProfiles);
+    const topologyGroupLabels = Array.from(new Set(topologyGroups.values()));
+    const useTopologyGroups = topologyGroupLabels.length >= 2;
+
+    const grouped = new Map<string, number>();
+    leafProfiles.forEach(item => {
+      const topoLabel = topologyGroups.get(item.id);
+      const groupLabel = useTopologyGroups && topoLabel
+        ? topoLabel
+        : inferGroupFromLeafName(item.name);
+      grouped.set(groupLabel, (grouped.get(groupLabel) || 0) + 1);
+    });
+
+    const sortedGroups = Array.from(grouped.entries()).sort((a, b) => b[1] - a[1]);
+    const keptGroups = sortedGroups.slice(0, 10).map(([group]) => group);
+    const colorMap = new Map<string, string>();
+    keptGroups.forEach((group, idx) => colorMap.set(group, getCategoryColor(idx)));
+    colorMap.set('Other', '#94a3b8');
+
     return {
       id: AUTO_ANNOTATION_ID,
-      name: '注释分组',
+      name: useTopologyGroups ? '拓扑分组色带' : '注释分组',
       type: 'COLORSTRIP',
       data: Object.fromEntries(
         leafProfiles.map(item => {
-          const rawGroup = inferGroupFromLeafName(item.name);
+          const topoLabel = topologyGroups.get(item.id);
+          const rawGroup = useTopologyGroups && topoLabel
+            ? topoLabel
+            : inferGroupFromLeafName(item.name);
           const group = colorMap.has(rawGroup) ? rawGroup : 'Other';
           return [item.name, { value: group, color: colorMap.get(group) || '#94a3b8' }];
         })
@@ -435,11 +573,8 @@
     fileInputEl?.click();
   };
 
-  const handleFileChange = async (e: Event) => {
-    const target = e.target as HTMLInputElement;
-    if (!target.files || target.files.length === 0) return;
-
-    file = target.files[0];
+  const processFile = async (selectedFile: File) => {
+    file = selectedFile;
     error = null;
     loading = true;
 
@@ -490,6 +625,34 @@
     }
   };
 
+  const handleFileChange = async (e: Event) => {
+    const target = e.target as HTMLInputElement;
+    if (!target.files || target.files.length === 0) return;
+    await processFile(target.files[0]);
+  };
+
+  const handleDragOver = (event: DragEvent) => {
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'copy';
+    }
+    isDragOver = true;
+  };
+
+  const handleDragLeave = (event: DragEvent) => {
+    event.preventDefault();
+    isDragOver = false;
+  };
+
+  const handleDrop = async (event: DragEvent) => {
+    event.preventDefault();
+    isDragOver = false;
+    const dt = event.dataTransfer;
+    if (!dt || !dt.files || dt.files.length === 0) return;
+    const droppedFile = dt.files[0];
+    await processFile(droppedFile);
+  };
+
   const loadExampleTree = async () => {
     loading = true;
     error = null;
@@ -536,6 +699,10 @@
 </script>
 
 <div class="space-y-2.5">
+  <div class={`text-[11px] ${theme === 'light' ? 'text-slate-500' : 'text-gray-400'}`}>
+    <span class="font-medium">推荐流程：</span>
+    <span>先上传 Newick 树文件，再按需上传注释；若不上传注释，将自动生成一个默认注释层。</span>
+  </div>
   <div class={`text-[10px] ${theme === 'light' ? 'text-slate-500' : 'text-gray-400'}`}>{uploadType === 'tree' ? 'Newick' : 'JSON'}</div>
 
   <div class={`grid grid-cols-2 gap-2 rounded p-1 ${theme === 'light' ? 'bg-slate-100' : 'bg-gray-900'}`}>
@@ -578,6 +745,46 @@
         套用注释
       </button>
     {/if}
+  </div>
+
+  <div
+    class={`mt-1 rounded border border-dashed px-3 py-3 text-[11px] cursor-pointer transition-colors ${
+      isDragOver
+        ? (theme === 'light'
+            ? 'border-blue-400 bg-blue-50/80 text-slate-800'
+            : 'border-blue-400/80 bg-blue-500/10 text-gray-100')
+        : (theme === 'light'
+            ? 'border-slate-300/80 bg-white text-slate-500 hover:border-blue-400 hover:bg-blue-50/40'
+            : 'border-gray-600/80 bg-gray-800/70 text-gray-400 hover:border-blue-400/70 hover:bg-gray-700/70')
+    }`}
+    role="button"
+    tabindex="0"
+    aria-label={uploadType === 'tree' ? '上传或拖拽树文件' : '上传或拖拽注释文件'}
+    on:click={triggerFileSelect}
+    on:keydown={(event: KeyboardEvent) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        triggerFileSelect();
+      }
+    }}
+    on:dragover={handleDragOver}
+    on:dragleave={handleDragLeave}
+    on:drop={handleDrop}
+  >
+    <div class="flex items-center justify-between gap-3">
+      <div class="flex-1">
+        <div class="font-medium mb-0.5">
+          {uploadType === 'tree' ? '拖拽树文件到此处' : '拖拽注释文件到此处'}
+        </div>
+        <div>
+          或点击区域选择文件。
+          {uploadType === 'tree' ? '支持 .nwk / .newick / .txt' : '支持 .json / .txt'}
+        </div>
+      </div>
+      <div class={`shrink-0 text-[10px] ${theme === 'light' ? 'text-slate-400' : 'text-gray-500'}`}>
+        {loading ? '解析中…' : (file ? file.name : '未选择文件')}
+      </div>
+    </div>
   </div>
 
   <input

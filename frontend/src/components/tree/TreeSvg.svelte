@@ -128,33 +128,6 @@
     
     // 渲染完成后，根据 uiStore 中的选中状态重新应用高亮效果
   };
-  
-  // 应用选中状态高亮
-  const applySelectedState = () => {
-    if (!renderer) return;
-    
-    // 获取选中的节点
-    let selectedNodes: string[] = [];
-    uiStore.subscribe(state => selectedNodes = state.selectedNodes)();
-    
-    if (selectedNodes.length > 0) {
-      // 这里可以通过 renderer 的方法或直接操作 DOM 来高亮选中的节点
-      // 由于我们使用的是 SVG 渲染，我们可以直接操作 DOM
-      setTimeout(() => {
-        // 恢复所有节点的原始样式
-        d3.selectAll('.node')
-          .attr('stroke', 'transparent')
-          .attr('r', 4);
-        
-        // 高亮选中的节点
-        selectedNodes.forEach(nodeId => {
-          // 这里需要找到对应的节点元素并高亮
-          // 由于我们没有直接的方法来获取节点元素，我们可以通过其他方式实现
-          // 注意：这种方法可能不是最佳实践，但可以作为临时解决方案
-        });
-      }, 100);
-    }
-  };
 
   // 更新变换
   const updateTransform = () => {
@@ -209,16 +182,34 @@
   // 处理鼠标滚轮事件，实现缩放功能
   const handleWheel = (e: WheelEvent) => {
     e.preventDefault();
-    
+
+    if (!container) return;
+
+    // 计算鼠标在容器内的坐标（屏幕坐标系）
+    const rect = container.getBoundingClientRect();
+    const screenX = e.clientX - rect.left;
+    const screenY = e.clientY - rect.top;
+
     // 计算缩放因子，鼠标滚轮向上为正，向下为负
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    
-    // 使用 update 方法来更新缩放值，这样可以确保获取到最新的值
-    uiStore.setZoom((zoom: number) => {
-      // 限制缩放范围，防止过度缩放
-      const newZoom = Math.max(0.1, Math.min(5, zoom * delta));
-      return newZoom;
-    });
+
+    const currentZoom = zoom || 1;
+    const unclampedZoom = currentZoom * delta;
+    const newZoom = Math.max(0.1, Math.min(5, unclampedZoom));
+
+    // 如果缩放比例没有变化，则不需要更新
+    if (newZoom === currentZoom) {
+      return;
+    }
+
+    const zoomRatio = newZoom / currentZoom;
+
+    // 调整平移，使鼠标所在位置在缩放前后尽量保持在相同屏幕位置
+    const newPanX = screenX * (1 - zoomRatio) + zoomRatio * pan.x;
+    const newPanY = screenY * (1 - zoomRatio) + zoomRatio * pan.y;
+
+    uiStore.setZoom(newZoom);
+    uiStore.setPan({ x: newPanX, y: newPanY });
   };
 
   // 添加窗口大小变化监听器
@@ -241,6 +232,7 @@
 <div
   bind:this={container}
   class={`w-full h-full overflow-hidden ${theme === 'light' ? 'bg-slate-50' : 'bg-gray-900'}`}
+  role="presentation"
   on:mousedown={handleMouseDown}
   on:mousemove={handleMouseMove}
   on:mouseup={handleMouseUp}
@@ -256,4 +248,4 @@
       uiStore.clearSelection();
     }
   }}
-/>
+></div>

@@ -24,6 +24,7 @@
   let annotationPage = 1;
   let tree: Tree | null = null;
   let theme: 'dark' | 'light' = 'dark';
+  let collapsedLayerIds = new Set<string>();
 
   let overlayEl: HTMLDivElement | null = null;
   let panelEl: HTMLDivElement | null = null;
@@ -321,6 +322,16 @@
     uiStore.setSelectionHighlightColor(row.color);
   };
 
+  const toggleLayerCollapsed = (layerId: string) => {
+    const next = new Set(collapsedLayerIds);
+    if (next.has(layerId)) {
+      next.delete(layerId);
+    } else {
+      next.add(layerId);
+    }
+    collapsedLayerIds = next;
+  };
+
   onMount(() => {
     if (typeof window === 'undefined') return;
     window.addEventListener('pointermove', onPointerMove);
@@ -361,35 +372,54 @@
         {#each layers.filter(layer => layer.visible) as layer}
           {@const rows = getLayerRows(layer)}
           {@const pageRows = getPagedRows(rows)}
+          {@const isCollapsed = collapsedLayerIds.has(layer.id)}
           <section class="space-y-1.5">
-            <div class={`px-1 text-[10px] tracking-wide uppercase truncate ${theme === 'light' ? 'text-slate-500' : 'text-gray-300'}`}>{layer.name}</div>
-            {#if pageRows.length === 0}
-              <div class={`px-1 text-[11px] ${theme === 'light' ? 'text-slate-500' : 'text-gray-500'}`}>当前筛选下无图例项</div>
-            {:else}
-              <div class="space-y-1">
-                {#each pageRows as row}
-                  <button
-                    class={`w-full inline-flex items-center gap-2 rounded border px-2 py-1.5 text-[11px] transition-colors ${
-                      row.selected
-                        ? (theme === 'light'
-                          ? 'border-cyan-400 bg-cyan-50 text-cyan-800'
-                          : 'border-cyan-400/70 bg-cyan-500/20 text-cyan-50')
-                        : (theme === 'light'
-                          ? 'border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100'
-                          : 'border-gray-600/70 bg-gray-800/65 text-gray-100 hover:border-gray-500 hover:bg-gray-700/75')
-                    }`}
-                    on:click={() => selectLegendRow(row)}
-                    title={`${row.label} · ${row.count}项${row.searchText ? ` · ${row.searchText}` : ''}${row.nodeIds.length > 0 ? ' · 点击联动到树节点' : ' · 无法定位到树节点'}`}
-                  >
-                    <span
-                      class={`inline-block h-2.5 w-2.5 rounded-sm ${row.selected ? (theme === 'light' ? 'ring-2 ring-cyan-300 ring-offset-1 ring-offset-white' : 'ring-2 ring-cyan-200/70 ring-offset-1 ring-offset-gray-900') : ''}`}
-                      style={`background:${row.color};`}
-                    ></span>
-                    <span class="truncate flex-1 text-left">{row.label}</span>
-                    <span class={`text-[10px] ${theme === 'light' ? 'text-slate-500' : 'text-gray-400'}`}>{row.count}</span>
-                  </button>
-                {/each}
+            <div class="flex items-center justify-between gap-2 px-1">
+              <div class={`text-[10px] tracking-wide uppercase truncate ${theme === 'light' ? 'text-slate-500' : 'text-gray-300'}`}>
+                {layer.name}
               </div>
+              <button
+                type="button"
+                class={`text-[10px] px-1 rounded ${
+                  theme === 'light'
+                    ? 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+                    : 'text-gray-400 hover:text-gray-100 hover:bg-gray-700'
+                }`}
+                title={isCollapsed ? '展开图例' : '收起图例'}
+                on:click={() => toggleLayerCollapsed(layer.id)}
+              >
+                {isCollapsed ? '展开' : '收起'}
+              </button>
+            </div>
+            {#if !isCollapsed}
+              {#if pageRows.length === 0}
+                <div class={`px-1 text-[11px] ${theme === 'light' ? 'text-slate-500' : 'text-gray-500'}`}>当前筛选下无图例项</div>
+              {:else}
+                <div class="space-y-1">
+                  {#each pageRows as row}
+                    <button
+                      class={`w-full inline-flex items-center gap-2 rounded border px-2 py-1.5 text-[11px] transition-colors ${
+                        row.selected
+                          ? (theme === 'light'
+                            ? 'border-cyan-400 bg-cyan-50 text-cyan-800'
+                            : 'border-cyan-400/70 bg-cyan-500/20 text-cyan-50')
+                          : (theme === 'light'
+                            ? 'border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100'
+                            : 'border-gray-600/70 bg-gray-800/65 text-gray-100 hover:border-gray-500 hover:bg-gray-700/75')
+                      }`}
+                      on:click={() => selectLegendRow(row)}
+                      title={`${row.label} · ${row.count}项${row.searchText ? ` · ${row.searchText}` : ''}${row.nodeIds.length > 0 ? ' · 点击联动到树节点' : ' · 无法定位到树节点'}`}
+                    >
+                      <span
+                        class={`inline-block h-2.5 w-2.5 rounded-sm ${row.selected ? (theme === 'light' ? 'ring-2 ring-cyan-300 ring-offset-1 ring-offset-white' : 'ring-2 ring-cyan-200/70 ring-offset-1 ring-offset-gray-900') : ''}`}
+                        style={`background:${row.color};`}
+                      ></span>
+                      <span class="truncate flex-1 text-left">{row.label}</span>
+                      <span class={`text-[10px] ${theme === 'light' ? 'text-slate-500' : 'text-gray-400'}`}>{row.count}</span>
+                    </button>
+                  {/each}
+                </div>
+              {/if}
             {/if}
           </section>
         {/each}

@@ -8,14 +8,25 @@ const generateId = (): string => {
 
 // 矩形布局算法
 class RectangularLayout implements LayoutAlgorithm {
+  private subtreeHeightCache = new Map<TreeNode, number>();
+
   compute(params: LayoutParams): LayoutResult {
     const { tree, width, height, padding } = params;
+
+    // 每次计算前清理缓存，避免跨树污染
+    this.subtreeHeightCache.clear();
+
     const nodes: Record<string, { x: number; y: number }> = {};
     const links: Array<{ source: string; target: string }> = [];
 
     // 计算树的高度和宽度
     const treeHeight = this.calculateTreeHeight(tree.root);
     const treeDepth = this.calculateMaxDepth(tree.root);
+
+    // 对于专业系统发育图，矩形布局通常需要支持基于分支长度的
+    // phylogram（水平位置反映进化距离）。当 Newick 中不存在
+    // 或几乎没有分支长度时，再退回到简单的 cladogram（等步长）。
+    const maxDistance = this.maxDistanceToRoot(tree.root);
 
     // 计算节点间距，根据容器大小自适应调整
     // 确保树的高度不会超出容器，同时为标签预留足够空间
@@ -24,17 +35,29 @@ class RectangularLayout implements LayoutAlgorithm {
     const availableHeight = Math.max(1, height - 2 * safePadding);
     const availableWidth = Math.max(1, width - 2 * safePadding - rightLabelSpace);
     // 根据容器高度和树的高度自适应调整Y轴间距
-    // 确保最小间距为15px，最大间距不超过50px
     const yStep = treeHeight > 1 ? availableHeight / (treeHeight - 1) : 0;
-    // X轴间距根据容器宽度和树的宽度自适应调整
-    const xStep = treeDepth > 1 ? availableWidth / (treeDepth - 1) : 0;
+    // X 轴：优先使用分支长度创建 phylogram；若无有效长度则退回等深度步长
+    const useBranchLength = maxDistance > 0;
+    const branchScale = useBranchLength ? availableWidth / maxDistance : 0;
+    const xStep = !useBranchLength && treeDepth > 1 ? availableWidth / (treeDepth - 1) : 0;
 
-    // 计算根节点的居中位置
+    // 根节点靠左，垂直居中
     const rootX = safePadding;
     const rootY = height / 2;
 
     // 递归计算节点位置
-    this.layoutNode(tree.root, rootX, rootY, xStep, yStep, nodes, links);
+    this.layoutNode(
+      tree.root,
+      rootX,
+      rootY,
+      xStep,
+      yStep,
+      nodes,
+      links,
+      0,              // 从根开始的累积分支距离
+      useBranchLength,
+      branchScale
+    );
 
     return {
       id: generateId(),
@@ -71,10 +94,21 @@ class RectangularLayout implements LayoutAlgorithm {
   }
 
   private calculateTreeHeight(node: TreeNode): number {
-    if (!node.children || node.children.length === 0) return 1;
-    return node.children.reduce((sum, child) =>
-      sum + this.calculateTreeHeight(child), 0
+    const cached = this.subtreeHeightCache.get(node);
+    if (cached !== undefined) return cached;
+
+    if (!node.children || node.children.length === 0) {
+      this.subtreeHeightCache.set(node, 1);
+      return 1;
+    }
+
+    const height = node.children.reduce(
+      (sum, child) => sum + this.calculateTreeHeight(child),
+      0
     );
+
+    this.subtreeHeightCache.set(node, height);
+    return height;
   }
 
   private calculateMaxDepth(node: TreeNode): number {
@@ -91,7 +125,10 @@ class RectangularLayout implements LayoutAlgorithm {
     xStep: number,
     yStep: number,
     nodes: Record<string, { x: number; y: number }>,
-    links: Array<{ source: string; target: string }>
+    links: Array<{ source: string; target: string }>,
+    accumulatedDistance: number,
+    useBranchLength: boolean,
+    branchScale: number
   ): number {
     nodes[node.id] = { x, y };
 
@@ -104,18 +141,47 @@ class RectangularLayout implements LayoutAlgorithm {
     const totalHeight = childHeights.reduce((sum, height) => sum + height, 0);
 
     // 布局子节点
-    let currentY = y - (totalHeight - 1) * yStep / 2;
+    let currentY = y - ((totalHeight - 1) * yStep) / 2;
     for (let i = 0; i < node.children.length; i++) {
       const child = node.children[i];
       const subtreeHeight = childHeights[i];
-      const childCenterY = currentY + (subtreeHeight - 1) * yStep / 2;
+      const childCenterY = currentY + ((subtreeHeight - 1) * yStep) / 2;
+
+      const rawBranchLength = Number((child as any).branchLength ?? 0);
+      const branchLength = Math.max(0, Number.isFinite(rawBranchLength) ? rawBranchLength : 0);
+
+      let childX = x;
+      let nextAccumulated = accumulatedDistance;
+
+      if (useBranchLength && branchScale > 0) {
+        nextAccumulated = accumulatedDistance + branchLength;
+        // 当前节点已经位于 accumulatedDistance * branchScale 位置上，
+        // 子节点在此基础上再向右平移 branchLength * branchScale。
+        childX = x + branchLength * branchScale;
+      } else {
+        childX = x + xStep;
+        nextAccumulated = accumulatedDistance + 1;
+      }
 
       links.push({ source: node.id, target: child.id });
-      this.layoutNode(child, x + xStep, childCenterY, xStep, yStep, nodes, links);
+      this.layoutNode(child, childX, childCenterY, xStep, yStep, nodes, links, nextAccumulated, useBranchLength, branchScale);
       currentY += subtreeHeight * yStep;
     }
 
     return totalHeight;
+  }
+
+  private maxDistanceToRoot(node: TreeNode, distance: number = 0): number {
+    const currentDistance = distance + Math.max(0, Number((node as any).branchLength ?? 0));
+
+    if (!node.children || node.children.length === 0) {
+      return currentDistance;
+    }
+
+    return node.children.reduce(
+      (max, child) => Math.max(max, this.maxDistanceToRoot(child, currentDistance)),
+      currentDistance
+    );
   }
 }
 

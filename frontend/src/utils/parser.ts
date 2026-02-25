@@ -51,7 +51,10 @@ const parseNewick = (newick: string): Tree => {
         lengthStr += newick[index];
         index++;
       }
-      branchLength = parseFloat(lengthStr);
+      const numeric = parseFloat(lengthStr);
+      if (!Number.isNaN(numeric)) {
+        branchLength = numeric;
+      }
     }
 
     return {
@@ -83,14 +86,20 @@ const countNodes = (node: TreeNode): number => {
 
 // 解析注释数据
 const parseAnnotation = (data: string, type: string): AnnotationData => {
-  // 这里实现简单的注释数据解析
-  // 实际项目中需要根据不同类型的注释文件格式进行解析
-  return {
-    id: generateId(),
-    name: 'Annotation',
-    type: type as any,
-    data: JSON.parse(data)
-  };
+  try {
+    const parsed = JSON.parse(data);
+    // 这里实现简单的注释数据解析
+    // 实际项目中需要根据不同类型的注释文件格式进行解析
+    return {
+      id: generateId(),
+      name: 'Annotation',
+      type: type as any,
+      data: parsed
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to parse annotation data: ${message}`);
+  }
 };
 
 // 导出解析函数
