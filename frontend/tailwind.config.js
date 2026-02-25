@@ -6,7 +6,16 @@ module.exports = {
     "./src/routes/**/*.{svelte,ts,js}"
   ],
   theme: {
-    extend: {},
+    extend: {
+      scrollbar: {
+        thin: {
+          width: '4px',
+          height: '4px',
+        },
+      },
+    },
   },
-  plugins: [],
+  plugins: [
+    require('tailwind-scrollbar')
+  ],
 }

@@ -209,48 +209,48 @@
         <!-- 自定义下拉组件，支持颜色预览 -->
         <div class="relative w-full">
           <button
-            class={`w-full text-xs rounded-md px-2 py-1.5 border flex justify-between items-center transition-colors ${theme === 'light' ? 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50' : 'bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600'}`}
+            class={`w-full text-xs rounded-md px-3 py-1.5 border flex justify-between items-center transition-all duration-200 ${theme === 'light' ? 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100 shadow-sm' : 'bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600 shadow'}`}
             on:click={() => {
               colorDropdownOpen = !colorDropdownOpen;
             }}
           >
-            <div class="flex items-center gap-2">
-              <div class="w-10 h-2.5 rounded overflow-hidden flex">
+            <div class="flex items-center gap-2 flex-1 min-w-0">
+              <div class="w-10 h-3 rounded overflow-hidden flex shadow-sm">
                 {#each colorSchemes.find(s => s.base === branchColor)?.colors.slice(0, 5) || [] as color}
                   <div
-                    class="flex-1 h-2.5"
+                    class="flex-1 h-3 transition-transform hover:scale-105"
                     style="background-color: {color}"
                   ></div>
                 {/each}
               </div>
-              <span class="truncate text-[10px]">{colorSchemes.find(s => s.base === branchColor)?.name || '选择色系'}</span>
+              <span class="truncate text-[10px] font-medium">{colorSchemes.find(s => s.base === branchColor)?.name || '选择色系'}</span>
             </div>
-            <svg width="8" height="5" fill="none" xmlns="http://www.w3.org/2000/svg" class={`transition-transform ${colorDropdownOpen ? 'rotate-180' : ''}`}>
-              <path d="M1 1L4 4L7 1" stroke={theme === 'light' ? '#6B7280' : '#9CA3AF'} stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <svg width="8" height="5" fill="none" xmlns="http://www.w3.org/2000/svg" class={`transition-transform duration-200 ${colorDropdownOpen ? 'rotate-180' : ''}`}>
+              <path d="M1 1L4 4L7 1" stroke={theme === 'light' ? '#4B5563' : '#D1D5DB'} stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
           <!-- 下拉菜单 -->
           {#if colorDropdownOpen}
             <div
-              class={`absolute top-full left-0 right-0 mt-1 rounded-md border shadow-lg z-20 max-h-60 overflow-y-auto transition-all duration-200 ease-in-out ${theme === 'light' ? 'bg-white border-slate-300' : 'bg-gray-800 border-gray-600'}`}
+              class={`absolute top-full left-0 right-0 mt-1 rounded-md border shadow-lg z-20 max-h-60 overflow-y-auto transition-all duration-200 ease-in-out transform ${theme === 'light' ? 'bg-white border-slate-200 shadow-md scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100 hover:scrollbar-thumb-slate-400' : 'bg-gray-800 border-gray-600 shadow-lg scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-700 hover:scrollbar-thumb-gray-500'}`}
             >
             {#each colorSchemes as scheme}
               <button
-                class={`w-full text-xs text-left px-3 py-2 flex items-center gap-3 transition-colors ${theme === 'light' ? 'text-slate-700 hover:bg-slate-100' : 'text-gray-200 hover:bg-gray-700'}`}
+                class={`w-full text-xs text-left px-3 py-2.5 flex items-center gap-3 transition-all duration-200 hover:translate-x-1 ${theme === 'light' ? 'text-slate-700 hover:bg-slate-50' : 'text-gray-200 hover:bg-gray-700'}`}
                 on:click={() => {
                   setBranchColor(scheme.base);
                   colorDropdownOpen = false;
                 }}
               >
-                <div class="w-12 h-3 rounded overflow-hidden flex">
+                <div class="w-12 h-3.5 rounded overflow-hidden flex shadow-sm">
                   {#each scheme.colors.slice(0, 6) as color}
                     <div
-                      class="flex-1 h-3" 
+                      class="flex-1 h-3.5 transition-transform hover:scale-105" 
                       style="background-color: {color}"
                     ></div>
                   {/each}
                 </div>
-                <span>{scheme.name}</span>
+                <span class="font-medium">{scheme.name}</span>
               </button>
             {/each}
             </div>
