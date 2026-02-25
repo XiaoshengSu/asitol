@@ -10,7 +10,6 @@
   }>();
 
   // 反应式变量来跟踪UI状态
-  let renderMode = 'svg';
   let showLabels = true;
   let branchColor = '#8f96a3';
   let branchColorMode: 'single' | 'clade' = 'clade';
@@ -18,28 +17,29 @@
   let colorDropdownOpen = false;
   let theme: 'dark' | 'light' = 'dark';
 
-  // 专业生信配色方案 - 基于科研期刊标准
+  // 专业生信配色方案 - 基于科研期刊和色觉友好标准
   const colorSchemes = [
-    // 科研期刊和软件标准调色板
-    { name: 'Prism', base: '#1F77B4', colors: ['#1F77B4', '#FF7F0E', '#2CA02C', '#D62728', '#9467BD', '#8C564B', '#E377C2', '#7F7F7F'] },
-    { name: 'Academy', base: '#8C564B', colors: ['#8C564B', '#E377C2', '#2CA02C', '#FF7F0E', '#1F77B4', '#9467BD', '#D62728', '#7F7F7F'] },
-    { name: 'Light', base: '#17BECF', colors: ['#17BECF', '#BCBD22', '#7F7F7F', '#E377C2', '#2CA02C', '#FF7F0E', '#1F77B4', '#D62728'] },
-    { name: 'GGPlot', base: '#F8766D', colors: ['#F8766D', '#C49A00', '#53B400', '#00C094', '#00B6EB', '#A58AFF', '#FB61D7', '#7CAE00'] },
+    // 推荐：色觉友好调色板（适合多类群、大样本）
+    { name: 'Colorblind', base: '#0072B2', colors: ['#0072B2', '#009E73', '#D55E00', '#CC79A7', '#F0E442', '#56B4E9', '#E69F00', '#999999'] },
+    // 经典科研期刊调色板（适合发表图）
     { name: 'NPG', base: '#E64B35B2', colors: ['#E64B35B2', '#4DBBD5B2', '#00A087B2', '#3C5488B2', '#F39B7F80', '#8491B480', '#91D1C280', '#DC0000B2'] },
+    { name: 'GGPlot', base: '#F8766D', colors: ['#F8766D', '#C49A00', '#53B400', '#00C094', '#00B6EB', '#A58AFF', '#FB61D7', '#7CAE00'] },
     { name: 'AAAS', base: '#3B4992', colors: ['#3B4992', '#EE0000', '#008B45', '#631879', '#008280', '#BB0021', '#5F559B', '#A20056'] },
     { name: 'NEJM', base: '#BC3C29', colors: ['#BC3C29', '#0072B5', '#E18727', '#20854E', '#7876B1', '#6F9ED4', '#FFDC91', '#EE4C97'] },
     { name: 'Lancet', base: '#00468B', colors: ['#00468B', '#ED0000', '#42B540', '#0099B4', '#925E9F', '#FDAF91', '#AD002A', '#ADB6B6'] },
     { name: 'JAMA', base: '#374E55', colors: ['#374E55', '#DF8F44', '#00A1D5', '#B24745', '#79AF97', '#6A6599', '#80796B', '#E0A7C8'] },
     { name: 'JCO', base: '#006393', colors: ['#006393', '#70A6FF', '#D62828', '#00BB2D', '#FFBB00', '#9E0059', '#00B9E3', '#FF6B35'] },
+    // 常用软件调色板与灰阶模式
+    { name: 'Prism', base: '#1F77B4', colors: ['#1F77B4', '#FF7F0E', '#2CA02C', '#D62728', '#9467BD', '#8C564B', '#E377C2', '#7F7F7F'] },
+    { name: 'Academy', base: '#8C564B', colors: ['#8C564B', '#E377C2', '#2CA02C', '#FF7F0E', '#1F77B4', '#9467BD', '#D62728', '#7F7F7F'] },
+    { name: 'Light', base: '#17BECF', colors: ['#17BECF', '#BCBD22', '#7F7F7F', '#E377C2', '#2CA02C', '#FF7F0E', '#1F77B4', '#D62728'] },
     { name: 'GSEA', base: '#666666', colors: ['#666666', '#666666', '#666666', '#666666', '#666666', '#FF0000', '#FF0000', '#FF0000'] },
     // 基础调色板
-    { name: 'Primary', base: '#3182BD', colors: ['#3182BD', '#E6550D', '#31A354', '#756BB1', '#636363', '#DD8452', '#80B1D3', '#FC8D62'] },
-    { name: 'Colorblind', base: '#0072B2', colors: ['#0072B2', '#009E73', '#D55E00', '#CC79A7', '#F0E442', '#56B4E9', '#E69F00', '#999999'] }
+    { name: 'Primary', base: '#3182BD', colors: ['#3182BD', '#E6550D', '#31A354', '#756BB1', '#636363', '#DD8452', '#80B1D3', '#FC8D62'] }
   ];
 
   // 订阅UI状态变化
   uiStore.subscribe($uiStore => {
-    renderMode = $uiStore.renderMode;
     showLabels = $uiStore.showLabels;
     branchColor = $uiStore.branchColor;
     branchColorMode = $uiStore.branchColorMode;
@@ -114,29 +114,32 @@
     <div class={`text-[11px] mb-1 ${theme === 'light' ? 'text-slate-500' : 'text-gray-400'}`}>布局</div>
     <div class="grid grid-cols-2 gap-2">
       <button
-        class={`text-xs py-1.5 px-2 rounded ${currentLayout === 'rectangular' ? 'bg-blue-600 text-white' : (theme === 'light' ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-gray-700 hover:bg-gray-600 text-white')}`}
+        class={`text-xs py-1.5 px-2 rounded border transition-all ${currentLayout === 'rectangular' ? (theme === 'light' ? 'bg-blue-100 text-blue-800 border-blue-300' : 'bg-blue-900/40 text-blue-300 border-blue-700') : (theme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300' : 'bg-gray-700 hover:bg-gray-600 text-gray-200 border-gray-600')}`}
         on:click={() => changeLayout('rectangular')}
       >
         矩形
       </button>
       <button
-        class={`text-xs py-1.5 px-2 rounded ${currentLayout === 'circular' ? 'bg-blue-600 text-white' : (theme === 'light' ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-gray-700 hover:bg-gray-600 text-white')}`}
+        class={`text-xs py-1.5 px-2 rounded border transition-all ${currentLayout === 'circular' ? (theme === 'light' ? 'bg-blue-100 text-blue-800 border-blue-300' : 'bg-blue-900/40 text-blue-300 border-blue-700') : (theme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300' : 'bg-gray-700 hover:bg-gray-600 text-gray-200 border-gray-600')}`}
         on:click={() => changeLayout('circular')}
       >
         圆形
       </button>
       <button
-        class={`text-xs py-1.5 px-2 rounded ${currentLayout === 'radial' ? 'bg-blue-600 text-white' : (theme === 'light' ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-gray-700 hover:bg-gray-600 text-white')}`}
+        class={`text-xs py-1.5 px-2 rounded border transition-all ${currentLayout === 'radial' ? (theme === 'light' ? 'bg-blue-100 text-blue-800 border-blue-300' : 'bg-blue-900/40 text-blue-300 border-blue-700') : (theme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300' : 'bg-gray-700 hover:bg-gray-600 text-gray-200 border-gray-600')}`}
         on:click={() => changeLayout('radial')}
       >
         径向
       </button>
       <button
-        class={`text-xs py-1.5 px-2 rounded ${currentLayout === 'unrooted' ? 'bg-blue-600 text-white' : (theme === 'light' ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-gray-700 hover:bg-gray-600 text-white')}`}
+        class={`text-xs py-1.5 px-2 rounded border transition-all ${currentLayout === 'unrooted' ? (theme === 'light' ? 'bg-blue-100 text-blue-800 border-blue-300' : 'bg-blue-900/40 text-blue-300 border-blue-700') : (theme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300' : 'bg-gray-700 hover:bg-gray-600 text-gray-200 border-gray-600')}`}
         on:click={() => changeLayout('unrooted')}
       >
         无根
       </button>
+    </div>
+    <div class={`mt-1 text-[10px] leading-snug ${theme === 'light' ? 'text-slate-500' : 'text-gray-500'}`}>
+      矩形：适合精读标签与注释；圆形/径向：适合展示整体类群结构；无根：用于强调距离关系而非根位置。
     </div>
   </div>
 
@@ -145,19 +148,19 @@
     <div class={`text-[11px] mb-1 ${theme === 'light' ? 'text-slate-500' : 'text-gray-400'}`}>缩放</div>
     <div class="flex gap-2">
       <button
-        class={`flex-1 py-1.5 px-2 rounded text-xs ${theme === 'light' ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-gray-700 hover:bg-gray-600 text-white'}`}
+        class={`flex-1 py-1.5 px-2 rounded border text-xs transition-all ${theme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300' : 'bg-gray-700 hover:bg-gray-600 text-gray-200 border-gray-600'}`}
         on:click={zoomIn}
       >
         放大
       </button>
       <button
-        class={`flex-1 py-1.5 px-2 rounded text-xs ${theme === 'light' ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-gray-700 hover:bg-gray-600 text-white'}`}
+        class={`flex-1 py-1.5 px-2 rounded border text-xs transition-all ${theme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300' : 'bg-gray-700 hover:bg-gray-600 text-gray-200 border-gray-600'}`}
         on:click={zoomOut}
       >
         缩小
       </button>
       <button
-        class={`flex-1 py-1.5 px-2 rounded text-xs ${theme === 'light' ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-gray-700 hover:bg-gray-600 text-white'}`}
+        class={`flex-1 py-1.5 px-2 rounded border text-xs transition-all ${theme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300' : 'bg-gray-700 hover:bg-gray-600 text-gray-200 border-gray-600'}`}
         on:click={resetView}
       >
         重置
@@ -169,64 +172,65 @@
 
   <!-- 树枝配色 -->
   <div>
-    <div class={`text-[11px] mb-1 ${theme === 'light' ? 'text-slate-500' : 'text-gray-400'}`}>树枝配色（科研色系）</div>
+    <div class={`text-[11px] mb-1 ${theme === 'light' ? 'text-slate-500' : 'text-gray-400'}`}>树枝配色（类群与出版配色）</div>
     <div class="grid grid-cols-2 gap-2 mb-2">
       <button
-        class={`text-xs py-1.5 px-2 rounded border text-left ${theme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300' : 'bg-gray-700 hover:bg-gray-600 text-white border-gray-600'}`}
-        style="opacity: {branchColorMode === 'clade' ? 1 : 0.6}"
+        class={`text-xs py-1.5 px-2 rounded border text-left transition-all ${branchColorMode === 'clade' ? (theme === 'light' ? 'bg-blue-100 text-blue-800 border-blue-300' : 'bg-blue-900/40 text-blue-300 border-blue-700') : (theme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300' : 'bg-gray-700 hover:bg-gray-600 text-gray-200 border-gray-600')}`}
         on:click={() => setBranchColorMode('clade')}
       >
-        分组配色
+        按主类群上色
       </button>
       <button
-        class={`text-xs py-1.5 px-2 rounded border text-left ${theme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300' : 'bg-gray-700 hover:bg-gray-600 text-white border-gray-600'}`}
-        style="opacity: {branchColorMode === 'single' ? 1 : 0.6}"
+        class={`text-xs py-1.5 px-2 rounded border text-left transition-all ${branchColorMode === 'single' ? (theme === 'light' ? 'bg-blue-100 text-blue-800 border-blue-300' : 'bg-blue-900/40 text-blue-300 border-blue-700') : (theme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300' : 'bg-gray-700 hover:bg-gray-600 text-gray-200 border-gray-600')}`}
         on:click={() => setBranchColorMode('single')}
       >
-        统一配色
+        灰/单一色
       </button>
+    </div>
+    <div class={`mb-2 text-[10px] leading-snug ${theme === 'light' ? 'text-slate-500' : 'text-gray-500'}`}>
+      分组配色适合查看门/纲级主类群；统一配色适合作为与注释色带区分的“基线”树形。
     </div>
     <div class="mb-2">
       <!-- 自定义下拉组件，支持颜色预览 -->
-      <div class="relative">
+      <div class="relative w-full">
         <button
-          class={`w-full text-xs rounded p-1.5 border text-left flex justify-between items-center ${theme === 'light' ? 'bg-white text-slate-700 border-slate-300' : 'bg-gray-700 text-gray-300 border-gray-600'}`}
+          class={`w-full text-xs rounded-md px-3 py-2 border flex justify-between items-center transition-colors ${theme === 'light' ? 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50' : 'bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600'}`}
           on:click={() => {
             colorDropdownOpen = !colorDropdownOpen;
           }}
         >
-          <div class="flex items-center gap-2">
-            <div class="w-16 h-4 rounded overflow-hidden">
-              {#each colorSchemes.find(s => s.base === branchColor)?.colors.slice(0, 8) || [] as color}
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-3 rounded overflow-hidden flex">
+              {#each colorSchemes.find(s => s.base === branchColor)?.colors.slice(0, 6) || [] as color}
                 <div
-                  class="inline-block w-2 h-4" 
+                  class="flex-1 h-3"
                   style="background-color: {color}"
                 ></div>
               {/each}
             </div>
-            <span>{colorSchemes.find(s => s.base === branchColor)?.name || '选择色系'}</span>
+            <span class="truncate">{colorSchemes.find(s => s.base === branchColor)?.name || '选择色系'}</span>
           </div>
-          <svg width="10" height="6" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M1 1L5 5L9 1" stroke="#9CA3AF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <svg width="10" height="6" fill="none" xmlns="http://www.w3.org/2000/svg" class={`transition-transform ${colorDropdownOpen ? 'rotate-180' : ''}`}>
+            <path d="M1 1L5 5L9 1" stroke={theme === 'light' ? '#6B7280' : '#9CA3AF'} stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
         <!-- 下拉菜单 -->
         {#if colorDropdownOpen}
           <div
-            class={`absolute top-full left-0 right-0 mt-1 rounded border shadow-lg z-10 max-h-60 overflow-y-auto ${theme === 'light' ? 'bg-white border-slate-300' : 'bg-gray-800 border-gray-600'}`}
+            class={`absolute top-full left-0 right-0 mt-1 rounded-md border shadow-lg z-20 max-h-60 overflow-y-auto transition-all duration-200 ease-in-out ${theme === 'light' ? 'bg-white border-slate-300' : 'bg-gray-800 border-gray-600'}`}
           >
           {#each colorSchemes as scheme}
             <button
-              class={`w-full text-xs text-left p-2 flex items-center gap-2 ${theme === 'light' ? 'text-slate-700 hover:bg-slate-100' : 'text-gray-200 hover:bg-gray-700'}`}
+              class={`w-full text-xs text-left px-3 py-2 flex items-center gap-3 transition-colors ${theme === 'light' ? 'text-slate-700 hover:bg-slate-100' : 'text-gray-200 hover:bg-gray-700'}`}
               on:click={() => {
                 setBranchColor(scheme.base);
                 colorDropdownOpen = false;
               }}
             >
-              <div class="w-16 h-4 rounded overflow-hidden flex">
-                {#each scheme.colors.slice(0, 8) as color}
+              <div class="w-12 h-3 rounded overflow-hidden flex">
+                {#each scheme.colors.slice(0, 6) as color}
                   <div
-                    class="flex-1" 
+                    class="flex-1 h-3" 
                     style="background-color: {color}"
                   ></div>
                 {/each}
@@ -255,7 +259,7 @@
   <div>
     <div class={`text-[11px] mb-1 ${theme === 'light' ? 'text-slate-500' : 'text-gray-400'}`}>标签显示</div>
     <button
-      class={`w-full py-1.5 px-2 rounded text-xs ${theme === 'light' ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-gray-700 hover:bg-gray-600 text-white'}`}
+      class={`w-full py-1.5 px-2 rounded text-xs transition-all ${showLabels ? (theme === 'light' ? 'bg-blue-100 text-blue-800 border border-blue-300' : 'bg-blue-900/40 text-blue-300 border border-blue-700') : (theme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300' : 'bg-gray-700 hover:bg-gray-600 text-gray-200 border border-gray-600')}`}
       on:click={toggleLabels}
     >
       {showLabels ? '隐藏标签' : '显示标签'}

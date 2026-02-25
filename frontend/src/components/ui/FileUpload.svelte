@@ -225,12 +225,13 @@
       node: any;
       leafCount: number;
       parentId: string | null;
+      depth: number;
     };
 
     const nodeInfoById = new Map<string, NodeInfo>();
     const leafPaths = new Map<string, string[]>(); // leafId -> ancestor id path（root 不必重复存储）
 
-    const walk = (node: any, parentId: string | null, path: string[]): number => {
+    const walk = (node: any, parentId: string | null, path: string[], depth: number): number => {
       if (!node || !node.id) return 0;
 
       const currentPath = path;
@@ -244,27 +245,30 @@
       } else {
         const childPath = [...currentPath, node.id];
         node.children.forEach((child: any) => {
-          leafCount += walk(child, node.id, childPath);
+          leafCount += walk(child, node.id, childPath, depth + 1);
         });
       }
 
-      nodeInfoById.set(node.id, { node, leafCount, parentId });
+      nodeInfoById.set(node.id, { node, leafCount, parentId, depth });
       return leafCount;
     };
 
-    const totalLeaves = walk(tree.root, null, []);
+    const totalLeaves = walk(tree.root, null, [], 0);
     if (totalLeaves <= 0) return new Map();
 
     // 仅考虑叶子数在 [minLeaves, maxLeaves] 范围内的内部节点作为潜在主类群
     const minLeaves = Math.max(3, Math.floor(totalLeaves / 30));
     const maxLeaves = Math.max(minLeaves, Math.floor(totalLeaves * 0.8));
 
-    const candidates: Array<{ id: string; leafCount: number }> = [];
+    const candidates: Array<{ id: string; leafCount: number; depth: number; score: number }> = [];
     nodeInfoById.forEach((info, id) => {
       if (!info.node?.children || info.node.children.length === 0) return;
       if (id === tree.root.id) return;
       if (info.leafCount >= minLeaves && info.leafCount <= maxLeaves) {
-        candidates.push({ id, leafCount: info.leafCount });
+        // 更偏好“足够大且更具体”的类群：在叶子数相近时，优先选择更深层的 clade。
+        const normalizedDepth = Math.max(1, info.depth);
+        const score = info.leafCount * Math.pow(normalizedDepth, 0.6);
+        candidates.push({ id, leafCount: info.leafCount, depth: info.depth, score });
       }
     });
 
@@ -272,8 +276,8 @@
       return new Map();
     }
 
-    // 较大的 clade 优先，限制分组数量以保证图例可读性（最多 8 个）
-    candidates.sort((a, b) => b.leafCount - a.leafCount);
+    // “更大且更具体”的 clade 优先，限制分组数量以保证图例可读性（最多 8 个）
+    candidates.sort((a, b) => b.score - a.score);
 
     const chosenIds: string[] = [];
 
@@ -707,13 +711,13 @@
 
   <div class={`grid grid-cols-2 gap-2 rounded p-1 ${theme === 'light' ? 'bg-slate-100' : 'bg-gray-900'}`}>
     <button
-      class={`text-xs py-1.5 rounded ${uploadType === 'tree' ? 'bg-blue-600 text-white' : (theme === 'light' ? 'text-slate-700 hover:bg-slate-200' : 'text-gray-300 hover:bg-gray-700/80')}`}
+      class={`text-xs py-1.5 rounded border transition-all ${uploadType === 'tree' ? (theme === 'light' ? 'bg-blue-100 text-blue-800 border-blue-300' : 'bg-blue-900/40 text-blue-300 border-blue-700') : (theme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300' : 'bg-gray-700 hover:bg-gray-600 text-gray-200 border-gray-600')}`}
       on:click={() => switchUploadType('tree')}
     >
       树文件
     </button>
     <button
-      class={`text-xs py-1.5 rounded ${uploadType === 'annotation' ? 'bg-blue-600 text-white' : (theme === 'light' ? 'text-slate-700 hover:bg-slate-200' : 'text-gray-300 hover:bg-gray-700/80')}`}
+      class={`text-xs py-1.5 rounded border transition-all ${uploadType === 'annotation' ? (theme === 'light' ? 'bg-blue-100 text-blue-800 border-blue-300' : 'bg-blue-900/40 text-blue-300 border-blue-700') : (theme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300' : 'bg-gray-700 hover:bg-gray-600 text-gray-200 border-gray-600')}`}
       on:click={() => switchUploadType('annotation')}
     >
       注释文件
@@ -722,7 +726,7 @@
 
   <div class="flex gap-2">
     <button
-      class="flex-1 text-xs bg-blue-600 hover:bg-blue-500 text-white py-2 rounded disabled:opacity-50"
+      class={`flex-1 text-xs py-2 rounded border transition-all ${theme === 'light' ? 'bg-blue-100 hover:bg-blue-200 text-blue-800 border-blue-300' : 'bg-blue-900/40 hover:bg-blue-800/50 text-blue-300 border-blue-700'} disabled:opacity-50`}
       on:click={triggerFileSelect}
       disabled={loading}
     >
@@ -731,14 +735,14 @@
 
     {#if uploadType === 'tree'}
       <button
-        class={`text-xs py-2 px-2 rounded disabled:opacity-50 whitespace-nowrap ${theme === 'light' ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-gray-700 hover:bg-gray-600 text-white'}`}
+        class={`text-xs py-2 px-2 rounded border transition-all disabled:opacity-50 whitespace-nowrap ${theme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300' : 'bg-gray-700 hover:bg-gray-600 text-gray-200 border-gray-600'}`}
         on:click={loadExampleTree}
         disabled={loading}
       >
         示例树
       </button>
       <button
-        class={`text-xs py-2 px-2 rounded disabled:opacity-50 whitespace-nowrap ${theme === 'light' ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-gray-700 hover:bg-gray-600 text-white'}`}
+        class={`text-xs py-2 px-2 rounded border transition-all disabled:opacity-50 whitespace-nowrap ${theme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300' : 'bg-gray-700 hover:bg-gray-600 text-gray-200 border-gray-600'}`}
         on:click={applyExampleAnnotation}
         disabled={loading || !currentTree}
       >
@@ -808,7 +812,7 @@
   <div class="flex items-center gap-2">
     <span class={`text-[11px] whitespace-nowrap ${theme === 'light' ? 'text-slate-500' : 'text-gray-400'}`}>注释方式</span>
     <select
-      class={`flex-1 text-xs rounded p-1.5 ${theme === 'light' ? 'bg-white text-slate-700 border border-slate-300' : 'bg-gray-700 text-gray-300'}`}
+      class={`flex-1 text-xs rounded border p-1.5 ${theme === 'light' ? 'bg-white text-slate-700 border-slate-300' : 'bg-gray-700 text-gray-300 border-gray-600'}`}
       bind:value={annotationType}
     >
       {#each ANNOTATION_OPTIONS as option}
