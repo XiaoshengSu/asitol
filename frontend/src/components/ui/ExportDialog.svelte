@@ -108,6 +108,7 @@
 
       <!-- 格式选择 -->
       <div class="mb-4">
+        <!-- svelte-ignore a11y_label_has_associated_control -->
         <label class="block text-xs text-gray-400 mb-1">导出格式</label>
         <select
           class="w-full text-xs bg-gray-700 text-gray-300 rounded p-2"

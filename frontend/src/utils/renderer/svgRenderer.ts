@@ -223,7 +223,7 @@ export class SVGRenderer {
         const target = layoutResult.nodes[d.target];
 
         if (layoutResult.type === 'rectangular') {
-          const isTargetLeaf = !findNodeById(tree.root, d.target)?.children || findNodeById(tree.root, d.target)?.children.length === 0;
+          const isTargetLeaf = !findNodeById(tree.root, d.target)?.children;
           if (isTargetLeaf) {
             const horizontalEndX = Math.max(source.x, target.x) + 18;
             return `M ${source.x} ${source.y} L ${target.x} ${source.y} L ${target.x} ${target.y} L ${horizontalEndX} ${target.y}`;
@@ -1237,7 +1237,7 @@ export class SVGRenderer {
 
       // ── KEY FIX: translate arc from SVG origin (0,0) to tree center ─────
       group.append('path')
-        .attr('d', arc())
+        .attr('d', arc as any)
         .attr('transform', `translate(${treeCx}, ${treeCy})`)
         .attr('fill', fillColor)
         .attr('stroke', d3.hsl(fillColor).darker(0.75).formatHex())

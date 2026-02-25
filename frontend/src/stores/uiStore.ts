@@ -1,5 +1,4 @@
 import { writable, derived } from 'svelte/store';
-import type { RenderMode } from '../types/layout';
 import { treeStore } from './treeStore';
 import { annotationStore } from './annotationStore';
 

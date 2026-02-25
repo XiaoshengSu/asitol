@@ -3,7 +3,7 @@ import type { AnnotationData } from '../types/annotation';
 
 // 生成唯一ID
 const generateId = (): string => {
-  return `id_${Math.random().toString(36).substr(2, 9)}`;
+  return `id_${Math.random().toString(36).slice(2, 11)}`;
 };
 
 // 解析Newick格式的树
