@@ -111,7 +111,17 @@
   
   <!-- 布局选择 -->
   <div>
-    <div class={`text-[11px] mb-1 ${theme === 'light' ? 'text-slate-500' : 'text-gray-400'}`}>布局</div>
+    <div class="flex items-center justify-between mb-1">
+      <div class={`text-[11px] ${theme === 'light' ? 'text-slate-500' : 'text-gray-400'}`}>布局</div>
+      <button
+        class={`text-[10px] p-0.5 rounded-full ${theme === 'light' ? 'text-slate-400 hover:text-slate-600' : 'text-gray-400 hover:text-gray-200'}`}
+        title="矩形：适合精读标签与注释；圆形/径向：适合展示整体类群结构；无根：用于强调距离关系而非根位置。"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </button>
+    </div>
     <div class="grid grid-cols-2 gap-2">
       <button
         class={`text-xs py-1.5 px-2 rounded border transition-all ${currentLayout === 'rectangular' ? (theme === 'light' ? 'bg-blue-100 text-blue-800 border-blue-300' : 'bg-blue-900/40 text-blue-300 border-blue-700') : (theme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300' : 'bg-gray-700 hover:bg-gray-600 text-gray-200 border-gray-600')}`}
@@ -137,9 +147,6 @@
       >
         无根
       </button>
-    </div>
-    <div class={`mt-1 text-[10px] leading-snug ${theme === 'light' ? 'text-slate-500' : 'text-gray-500'}`}>
-      矩形：适合精读标签与注释；圆形/径向：适合展示整体类群结构；无根：用于强调距离关系而非根位置。
     </div>
   </div>
 
@@ -172,7 +179,17 @@
 
   <!-- 树枝配色 -->
   <div>
-    <div class={`text-[11px] mb-1 ${theme === 'light' ? 'text-slate-500' : 'text-gray-400'}`}>树枝配色（类群与出版配色）</div>
+    <div class="flex items-center justify-between mb-1">
+      <div class={`text-[11px] ${theme === 'light' ? 'text-slate-500' : 'text-gray-400'}`}>树枝配色</div>
+      <button
+        class={`text-[10px] p-0.5 rounded-full ${theme === 'light' ? 'text-slate-400 hover:text-slate-600' : 'text-gray-400 hover:text-gray-200'}`}
+        title="分组配色适合查看门/纲级主类群；统一配色适合作为与注释色带区分的“基线”树形。"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </button>
+    </div>
     <div class="grid grid-cols-2 gap-2 mb-2">
       <button
         class={`text-xs py-1.5 px-2 rounded border text-left transition-all ${branchColorMode === 'clade' ? (theme === 'light' ? 'bg-blue-100 text-blue-800 border-blue-300' : 'bg-blue-900/40 text-blue-300 border-blue-700') : (theme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300' : 'bg-gray-700 hover:bg-gray-600 text-gray-200 border-gray-600')}`}
@@ -187,69 +204,68 @@
         灰/单一色
       </button>
     </div>
-    <div class={`mb-2 text-[10px] leading-snug ${theme === 'light' ? 'text-slate-500' : 'text-gray-500'}`}>
-      分组配色适合查看门/纲级主类群；统一配色适合作为与注释色带区分的“基线”树形。
-    </div>
-    <div class="mb-2">
-      <!-- 自定义下拉组件，支持颜色预览 -->
-      <div class="relative w-full">
-        <button
-          class={`w-full text-xs rounded-md px-3 py-2 border flex justify-between items-center transition-colors ${theme === 'light' ? 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50' : 'bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600'}`}
-          on:click={() => {
-            colorDropdownOpen = !colorDropdownOpen;
-          }}
-        >
-          <div class="flex items-center gap-3">
-            <div class="w-12 h-3 rounded overflow-hidden flex">
-              {#each colorSchemes.find(s => s.base === branchColor)?.colors.slice(0, 6) || [] as color}
-                <div
-                  class="flex-1 h-3"
-                  style="background-color: {color}"
-                ></div>
-              {/each}
-            </div>
-            <span class="truncate">{colorSchemes.find(s => s.base === branchColor)?.name || '选择色系'}</span>
-          </div>
-          <svg width="10" height="6" fill="none" xmlns="http://www.w3.org/2000/svg" class={`transition-transform ${colorDropdownOpen ? 'rotate-180' : ''}`}>
-            <path d="M1 1L5 5L9 1" stroke={theme === 'light' ? '#6B7280' : '#9CA3AF'} stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
-        <!-- 下拉菜单 -->
-        {#if colorDropdownOpen}
-          <div
-            class={`absolute top-full left-0 right-0 mt-1 rounded-md border shadow-lg z-20 max-h-60 overflow-y-auto transition-all duration-200 ease-in-out ${theme === 'light' ? 'bg-white border-slate-300' : 'bg-gray-800 border-gray-600'}`}
+    <div class="flex items-center gap-2 mb-2">
+      <div class="flex-1">
+        <!-- 自定义下拉组件，支持颜色预览 -->
+        <div class="relative w-full">
+          <button
+            class={`w-full text-xs rounded-md px-2 py-1.5 border flex justify-between items-center transition-colors ${theme === 'light' ? 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50' : 'bg-gray-700 text-gray-200 border-gray-600 hover:bg-gray-600'}`}
+            on:click={() => {
+              colorDropdownOpen = !colorDropdownOpen;
+            }}
           >
-          {#each colorSchemes as scheme}
-            <button
-              class={`w-full text-xs text-left px-3 py-2 flex items-center gap-3 transition-colors ${theme === 'light' ? 'text-slate-700 hover:bg-slate-100' : 'text-gray-200 hover:bg-gray-700'}`}
-              on:click={() => {
-                setBranchColor(scheme.base);
-                colorDropdownOpen = false;
-              }}
-            >
-              <div class="w-12 h-3 rounded overflow-hidden flex">
-                {#each scheme.colors.slice(0, 6) as color}
+            <div class="flex items-center gap-2">
+              <div class="w-10 h-2.5 rounded overflow-hidden flex">
+                {#each colorSchemes.find(s => s.base === branchColor)?.colors.slice(0, 5) || [] as color}
                   <div
-                    class="flex-1 h-3" 
+                    class="flex-1 h-2.5"
                     style="background-color: {color}"
                   ></div>
                 {/each}
               </div>
-              <span>{scheme.name}</span>
-            </button>
-          {/each}
-          </div>
-        {/if}
+              <span class="truncate text-[10px]">{colorSchemes.find(s => s.base === branchColor)?.name || '选择色系'}</span>
+            </div>
+            <svg width="8" height="5" fill="none" xmlns="http://www.w3.org/2000/svg" class={`transition-transform ${colorDropdownOpen ? 'rotate-180' : ''}`}>
+              <path d="M1 1L4 4L7 1" stroke={theme === 'light' ? '#6B7280' : '#9CA3AF'} stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <!-- 下拉菜单 -->
+          {#if colorDropdownOpen}
+            <div
+              class={`absolute top-full left-0 right-0 mt-1 rounded-md border shadow-lg z-20 max-h-60 overflow-y-auto transition-all duration-200 ease-in-out ${theme === 'light' ? 'bg-white border-slate-300' : 'bg-gray-800 border-gray-600'}`}
+            >
+            {#each colorSchemes as scheme}
+              <button
+                class={`w-full text-xs text-left px-3 py-2 flex items-center gap-3 transition-colors ${theme === 'light' ? 'text-slate-700 hover:bg-slate-100' : 'text-gray-200 hover:bg-gray-700'}`}
+                on:click={() => {
+                  setBranchColor(scheme.base);
+                  colorDropdownOpen = false;
+                }}
+              >
+                <div class="w-12 h-3 rounded overflow-hidden flex">
+                  {#each scheme.colors.slice(0, 6) as color}
+                    <div
+                      class="flex-1 h-3" 
+                      style="background-color: {color}"
+                    ></div>
+                  {/each}
+                </div>
+                <span>{scheme.name}</span>
+              </button>
+            {/each}
+            </div>
+          {/if}
+        </div>
       </div>
-    </div>
-    <div class="flex items-center gap-2">
-      <input
-        type="color"
-        class={`w-10 h-7 rounded border ${theme === 'light' ? 'bg-white border-slate-300' : 'bg-gray-700 border-gray-600'}`}
-        bind:value={branchColor}
-        on:change={(e) => setBranchColor((e.currentTarget as HTMLInputElement).value)}
-      />
-      <span class={`text-[10px] text-left ${theme === 'light' ? 'text-slate-500' : 'text-gray-400'}`}>{branchColor}</span>
+      <div class="flex items-center gap-1">
+        <input
+          type="color"
+          class={`w-8 h-6 rounded border ${theme === 'light' ? 'bg-white border-slate-300' : 'bg-gray-700 border-gray-600'}`}
+          bind:value={branchColor}
+          on:change={(e) => setBranchColor((e.currentTarget as HTMLInputElement).value)}
+        />
+        <span class={`text-[10px] text-left ${theme === 'light' ? 'text-slate-500' : 'text-gray-400'}`}>{branchColor}</span>
+      </div>
     </div>
   </div>
 

@@ -112,82 +112,101 @@
   <main class="flex-1 flex overflow-hidden min-h-0">
     {#if !canvasFullscreen}
       <aside
-        class={`border-r transition-all duration-150 ease-out overflow-hidden ${$uiStore.theme === 'light' ? 'bg-white/95 border-slate-200' : 'bg-gray-800/95 border-gray-700'} ${
-          sidebarCollapsed ? 'w-14' : 'w-[284px]'
-        }`}
+        class={`border-r transition-all duration-200 ease-in-out overflow-hidden ${$uiStore.theme === 'light' ? 'bg-white/95 border-slate-200' : 'bg-gray-800/95 border-gray-700'} ${sidebarCollapsed ? 'w-12' : 'w-[270px]'}`}
       >
         {#if sidebarCollapsed}
-          <div class="h-full flex flex-col items-center gap-2 py-3">
+          <div class="h-full flex flex-col items-center gap-1.5 py-2">
             <button
-              class="w-9 h-9 rounded bg-gray-700 hover:bg-gray-600 text-gray-200 text-sm"
+              class={`w-8 h-8 rounded-md flex items-center justify-center transition-colors ${$uiStore.theme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' : 'bg-gray-700 hover:bg-gray-600 text-gray-200'}`}
               on:click={() => {
                 sidebarCollapsed = false;
                 panelUploadOpen = true;
               }}
               title="导入数据"
             >
-              导
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
             </button>
             <button
-              class="w-9 h-9 rounded bg-gray-700 hover:bg-gray-600 text-gray-200 text-sm"
+              class={`w-8 h-8 rounded-md flex items-center justify-center transition-colors ${$uiStore.theme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' : 'bg-gray-700 hover:bg-gray-600 text-gray-200'}`}
               on:click={() => {
                 sidebarCollapsed = false;
                 panelControlOpen = true;
               }}
               title="树控制"
             >
-              树
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
             </button>
             <button
-              class="w-9 h-9 rounded bg-gray-700 hover:bg-gray-600 text-gray-200 text-sm"
+              class={`w-8 h-8 rounded-md flex items-center justify-center transition-colors ${$uiStore.theme === 'light' ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' : 'bg-gray-700 hover:bg-gray-600 text-gray-200'}`}
               on:click={() => {
                 sidebarCollapsed = false;
                 panelLayerOpen = true;
               }}
               title="图层管理"
             >
-              图
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              </svg>
             </button>
           </div>
         {:else}
-          <div class="h-full overflow-y-auto px-2 py-2 space-y-2">
-            <section class={`rounded border ${$uiStore.theme === 'light' ? 'border-slate-200 bg-white' : 'border-gray-700/70 bg-gray-800/60'}` }>
+          <div class="h-full overflow-y-auto px-2 py-2 space-y-1.5">
+            <section class={`rounded-md border transition-all duration-200 ${$uiStore.theme === 'light' ? 'border-slate-200 bg-white hover:shadow-sm' : 'border-gray-700/70 bg-gray-800/60 hover:border-gray-600/80'}` }>
               <button
-                class={`w-full text-left px-3 py-2 text-xs font-medium border-b ${$uiStore.theme === 'light' ? 'text-slate-700 border-slate-200 hover:bg-slate-50' : 'text-gray-200 border-gray-700/70 hover:bg-gray-700/50'}` }
+                class={`w-full text-left px-2.5 py-1.5 text-xs font-medium border-b transition-colors ${$uiStore.theme === 'light' ? 'text-slate-700 border-slate-200 hover:bg-slate-50' : 'text-gray-200 border-gray-700/70 hover:bg-gray-700/50'}` }
                 on:click={() => (panelUploadOpen = !panelUploadOpen)}
               >
-                导入数据
+                <div class="flex items-center justify-between">
+                  <span>导入数据</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" class={`h-3.5 w-3.5 transition-transform ${panelUploadOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
               </button>
               {#if panelUploadOpen}
-                <div class="p-2">
+                <div class="p-1.5">
                   <FileUpload />
                 </div>
               {/if}
             </section>
 
-            <section class={`rounded border ${$uiStore.theme === 'light' ? 'border-slate-200 bg-white' : 'border-gray-700/70 bg-gray-800/60'}` }>
+            <section class={`rounded-md border transition-all duration-200 ${$uiStore.theme === 'light' ? 'border-slate-200 bg-white hover:shadow-sm' : 'border-gray-700/70 bg-gray-800/60 hover:border-gray-600/80'}` }>
               <button
-                class={`w-full text-left px-3 py-2 text-xs font-medium border-b ${$uiStore.theme === 'light' ? 'text-slate-700 border-slate-200 hover:bg-slate-50' : 'text-gray-200 border-gray-700/70 hover:bg-gray-700/50'}` }
+                class={`w-full text-left px-2.5 py-1.5 text-xs font-medium border-b transition-colors ${$uiStore.theme === 'light' ? 'text-slate-700 border-slate-200 hover:bg-slate-50' : 'text-gray-200 border-gray-700/70 hover:bg-gray-700/50'}` }
                 on:click={() => (panelControlOpen = !panelControlOpen)}
               >
-                树控制
+                <div class="flex items-center justify-between">
+                  <span>树控制</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" class={`h-3.5 w-3.5 transition-transform ${panelControlOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
               </button>
               {#if panelControlOpen}
-                <div class="p-2">
+                <div class="p-1.5">
                   <TreeControls />
                 </div>
               {/if}
             </section>
 
-            <section class={`rounded border ${$uiStore.theme === 'light' ? 'border-slate-200 bg-white' : 'border-gray-700/70 bg-gray-800/60'}` }>
+            <section class={`rounded-md border transition-all duration-200 ${$uiStore.theme === 'light' ? 'border-slate-200 bg-white hover:shadow-sm' : 'border-gray-700/70 bg-gray-800/60 hover:border-gray-600/80'}` }>
               <button
-                class={`w-full text-left px-3 py-2 text-xs font-medium border-b ${$uiStore.theme === 'light' ? 'text-slate-700 border-slate-200 hover:bg-slate-50' : 'text-gray-200 border-gray-700/70 hover:bg-gray-700/50'}` }
+                class={`w-full text-left px-2.5 py-1.5 text-xs font-medium border-b transition-colors ${$uiStore.theme === 'light' ? 'text-slate-700 border-slate-200 hover:bg-slate-50' : 'text-gray-200 border-gray-700/70 hover:bg-gray-700/50'}` }
                 on:click={() => (panelLayerOpen = !panelLayerOpen)}
               >
-                图层管理
+                <div class="flex items-center justify-between">
+                  <span>图层管理</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" class={`h-3.5 w-3.5 transition-transform ${panelLayerOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
               </button>
               {#if panelLayerOpen}
-                <div class="p-2">
+                <div class="p-1.5">
                   <LayerManager />
                 </div>
               {/if}
