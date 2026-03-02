@@ -704,8 +704,7 @@
 
 <div class="space-y-2.5">
   <div class={`text-[11px] ${theme === 'light' ? 'text-slate-500' : 'text-gray-400'}`}>
-    <span class="font-medium">推荐流程：</span>
-    <span>先上传 Newick 树文件，再按需上传注释；若不上传注释，将自动生成一个默认注释层。</span>
+    <span>上传 Newick 树文件，再按需上传注释；若不上传注释，将自动生成一个默认注释层。</span>
   </div>
   <div class={`text-[10px] ${theme === 'light' ? 'text-slate-500' : 'text-gray-400'}`}>{uploadType === 'tree' ? 'Newick' : 'JSON'}</div>
 
@@ -778,10 +777,9 @@
     <div class="flex items-center justify-between gap-3">
       <div class="flex-1">
         <div class="font-medium mb-0.5">
-          {uploadType === 'tree' ? '拖拽树文件到此处' : '拖拽注释文件到此处'}
+          {uploadType === 'tree' ? '拖拽树文件到此处' : '拖拽注释文件到此处'}或点击区域选择文件。
         </div>
         <div>
-          或点击区域选择文件。
           {uploadType === 'tree' ? '支持 .nwk / .newick / .txt' : '支持 .json / .txt'}
         </div>
       </div>

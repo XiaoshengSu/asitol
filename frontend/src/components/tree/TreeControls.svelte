@@ -180,7 +180,7 @@
   <!-- 树枝配色 -->
   <div>
     <div class="flex items-center justify-between mb-1">
-      <div class={`text-[11px] ${theme === 'light' ? 'text-slate-500' : 'text-gray-400'}`}>树枝配色</div>
+      <div class={`text-[11px] ${theme === 'light' ? 'text-slate-500' : 'text-gray-400'}`}>配色方案</div>
       <button
         class={`text-[10px] p-0.5 rounded-full ${theme === 'light' ? 'text-slate-400 hover:text-slate-600' : 'text-gray-400 hover:text-gray-200'}`}
         title="分组配色适合查看门/纲级主类群；统一配色适合作为与注释色带区分的“基线”树形。"

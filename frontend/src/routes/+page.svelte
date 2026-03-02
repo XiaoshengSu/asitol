@@ -71,7 +71,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="{sidebarCollapsed ? 'M12 4v16m8-8H4' : 'M4 6h16M4 12h16M4 18h16'}" />
           </svg>
         </button>
-        <h1 class={`text-lg font-bold whitespace-nowrap ${$uiStore.theme === 'light' ? 'text-slate-900' : 'text-white'}`}>AS iTOL</h1>
+        <h1 class={`text-lg font-bold whitespace-nowrap ${$uiStore.theme === 'light' ? 'text-slate-900' : 'text-white'}`}>As iTOL</h1>
         <div class="h-6 w-px bg-gray-300 dark:bg-gray-600"></div>
         <nav class="flex items-center gap-2 min-w-0">
           <button
