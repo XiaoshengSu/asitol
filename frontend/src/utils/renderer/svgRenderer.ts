@@ -90,12 +90,7 @@ export class SVGRenderer {
   }
 
   /**
-   * FIX: Compute the true geometric center of all rendered nodes.
-   *
-   * Annotation layers live inside `this.g` (the same SVG group as the tree nodes),
-   * so their coordinates must be in the same node-coordinate space.
-   * The bounding-box midpoint of all node positions is the correct center for
-   * circular annotation rings, and it is independent of canvas size or zoom state.
+   * Compute the true geometric center of all rendered nodes.
    */
   private computeTreeCenter(): { cx: number; cy: number } {
     const allNodes = Object.values(this.nodes || {});
@@ -110,18 +105,6 @@ export class SVGRenderer {
     };
   }
 
-  /**
-   * Compute the translate needed to center the tree bounding box inside the canvas,
-   * then reset uiStore pan/zoom so the external zoom state machine is in sync.
-   *
-   * Why this is needed:
-   *   Layout algorithms produce node coordinates in their own space (e.g. starting
-   *   from an arbitrary origin).  When the user switches layout types the old
-   *   pan/zoom stored in uiStore is still applied by updateTransform(), causing
-   *   the new tree to appear off-screen until the user clicks "Reset".
-   *   By pushing identity zoom + centering translate into uiStore immediately after
-   *   each render we make every layout "just appear" correctly.
-   */
   private autoCenter(config: RenderConfig): void {
     const allNodes = Object.values(this.nodes || {});
     if (allNodes.length === 0) return;
@@ -133,29 +116,173 @@ export class SVGRenderer {
     const minY = Math.min(...ys);
     const maxY = Math.max(...ys);
 
-    // Add generous padding so labels / annotation rings are not clipped
     const PADDING = 80;
     const treeW = maxX - minX + PADDING * 2;
     const treeH = maxY - minY + PADDING * 2;
 
-    // Fit-to-viewport scale (never enlarge beyond 1× for small trees)
     const scaleX = config.width  / treeW;
     const scaleY = config.height / treeH;
     const scale  = Math.min(1, scaleX, scaleY);
 
-    // After scaling, translate so the tree center aligns with the canvas center
     const treeCx = (minX + maxX) / 2;
     const treeCy = (minY + maxY) / 2;
     const tx = config.width  / 2 - treeCx * scale;
     const ty = config.height / 2 - treeCy * scale;
 
     if (typeof uiStore !== 'undefined') {
-      // Push into the store so subsequent pan/zoom gestures start from here
       uiStore.setZoom(scale);
       uiStore.setPan({ x: tx, y: ty });
     } else {
-      // Fallback: apply directly when there is no store
       this.g.attr('transform', `translate(${tx},${ty}) scale(${scale})`);
+    }
+  }
+
+  /**
+   * Build the SVG path `d` string for a single branch.
+   *
+   * ── Rectangular layout ────────────────────────────────────────────────────
+   * Standard phylogenetic "right-angle elbow":
+   *
+   *   In a left-to-right rectangular phylogeny the convention is:
+   *     • X-axis = evolutionary distance / depth (increases left → right)
+   *     • Y-axis = leaf ordering (increases top → bottom)
+   *
+   *   A parent node at (source.x, source.y) connects to a child at
+   *   (target.x, target.y) with two segments:
+   *     1. A VERTICAL segment at source.x from source.y → target.y
+   *        (the "stem" shared by all siblings in a clade)
+   *     2. A HORIZONTAL segment at target.y from source.x → target.x
+   *        (the "branch" extending to the child's depth)
+   *
+   *   This is the canonical form used by FigTree, iTOL, Dendroscope, etc.
+   *   The previous code did horizontal-first (M sx sy → L tx sy → L tx ty),
+   *   which draws the elbow in the wrong orientation and makes internal nodes
+   *   appear disconnected from their siblings.
+   *
+   * ── Circular layout ───────────────────────────────────────────────────────
+   * Professional circular phylogeny uses:
+   *   1. A circular arc at the source radius from source.angle → target.angle
+   *      (connects siblings along the same depth ring)
+   *   2. A radial straight line from the arc endpoint outward to target
+   *      (extends the branch to the child's radius)
+   *
+   * ── Radial layout ─────────────────────────────────────────────────────────
+   * Radial (equal-angle / equal-daylight) unrooted-style layouts use straight
+   * lines only — no arc segments.  The layout algorithm already positions nodes
+   * so that straight lines produce the correct topology.
+   *
+   * ── Unrooted layout ───────────────────────────────────────────────────────
+   * Straight lines only — identical to radial.
+   */
+  private buildBranchPath(
+    source: { x: number; y: number },
+    target: { x: number; y: number },
+    layoutType: LayoutType,
+    treeCx: number,
+    treeCy: number
+  ): string {
+    switch (layoutType) {
+      case 'rectangular': {
+        // ── FIX ──────────────────────────────────────────────────────────────
+        // Correct elbow: vertical at source.x first, then horizontal to
+        // target.x.  This keeps sibling branches visually grouped at the
+        // parent's X position and extends each child horizontally to its own
+        // depth — matching every major phylogenetics viewer.
+        //
+        // Old (wrong):  M sx sy → L tx sy → L tx ty   (horizontal first)
+        // New (correct): M sx sy → L sx ty → L tx ty  (vertical first)
+        // ─────────────────────────────────────────────────────────────────────
+        return `M ${source.x} ${source.y} L ${source.x} ${target.y} L ${target.x} ${target.y}`;
+      }
+
+      case 'circular': {
+        // Arc segment: draw along the circumference at source's radius from
+        // source's angle to target's angle, then go radially to target.
+        const sourceR = Math.hypot(source.x - treeCx, source.y - treeCy);
+
+        // Guard: if source is essentially at the center (root), just draw a
+        // straight radial line.
+        if (sourceR < 1e-3) {
+          return `M ${source.x} ${source.y} L ${target.x} ${target.y}`;
+        }
+
+        const sourceAngle = Math.atan2(source.y - treeCy, source.x - treeCx);
+        const targetAngle = Math.atan2(target.y - treeCy, target.x - treeCx);
+
+        // Normalize angle difference to (-π, π] to always take the shorter arc.
+        let angleDiff = targetAngle - sourceAngle;
+        while (angleDiff >  Math.PI) angleDiff -= 2 * Math.PI;
+        while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+
+        const sweepFlag    = angleDiff >= 0 ? 1 : 0;
+        const largeArcFlag = Math.abs(angleDiff) > Math.PI ? 1 : 0;
+
+        // Point on the source-radius circle at the target's angle.
+        const arcEndX = treeCx + sourceR * Math.cos(targetAngle);
+        const arcEndY = treeCy + sourceR * Math.sin(targetAngle);
+
+        // Skip arc for negligibly small angle differences to avoid degenerate
+        // zero-length arc commands that can confuse some SVG renderers.
+        const arcDist = Math.hypot(arcEndX - source.x, arcEndY - source.y);
+        if (arcDist < 0.5) {
+          return `M ${source.x} ${source.y} L ${target.x} ${target.y}`;
+        }
+
+        return [
+          `M ${source.x} ${source.y}`,
+          `A ${sourceR} ${sourceR} 0 ${largeArcFlag} ${sweepFlag} ${arcEndX} ${arcEndY}`,
+          `L ${target.x} ${target.y}`,
+        ].join(' ');
+      }
+
+      case 'radial': {
+        // ── FIX ──────────────────────────────────────────────────────────────
+        // Radial (equal-angle) trees ARE rooted and use a cladogram-style
+        // elbow rendered in polar coordinates:
+        //   1. Arc at source radius (same as circular)
+        //   2. Radial line to target
+        //
+        // Previously this fell through to the straight-line default, which
+        // caused diagonal "shortcut" lines instead of proper right-angle
+        // elbows in polar space.
+        // ─────────────────────────────────────────────────────────────────────
+        const sourceR = Math.hypot(source.x - treeCx, source.y - treeCy);
+
+        if (sourceR < 1e-3) {
+          return `M ${source.x} ${source.y} L ${target.x} ${target.y}`;
+        }
+
+        const sourceAngle = Math.atan2(source.y - treeCy, source.x - treeCx);
+        const targetAngle = Math.atan2(target.y - treeCy, target.x - treeCx);
+
+        let angleDiff = targetAngle - sourceAngle;
+        while (angleDiff >  Math.PI) angleDiff -= 2 * Math.PI;
+        while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+
+        const sweepFlag    = angleDiff >= 0 ? 1 : 0;
+        const largeArcFlag = Math.abs(angleDiff) > Math.PI ? 1 : 0;
+
+        const arcEndX = treeCx + sourceR * Math.cos(targetAngle);
+        const arcEndY = treeCy + sourceR * Math.sin(targetAngle);
+
+        const arcDist = Math.hypot(arcEndX - source.x, arcEndY - source.y);
+        if (arcDist < 0.5) {
+          return `M ${source.x} ${source.y} L ${target.x} ${target.y}`;
+        }
+
+        return [
+          `M ${source.x} ${source.y}`,
+          `A ${sourceR} ${sourceR} 0 ${largeArcFlag} ${sweepFlag} ${arcEndX} ${arcEndY}`,
+          `L ${target.x} ${target.y}`,
+        ].join(' ');
+      }
+
+      case 'unrooted':
+      default:
+        // Unrooted (e.g. equal-daylight, Reingold–Tilford unrooted) layouts
+        // place nodes via force or angle algorithms that guarantee straight
+        // lines represent correct branch topology.
+        return `M ${source.x} ${source.y} L ${target.x} ${target.y}`;
     }
   }
 
@@ -176,7 +303,7 @@ export class SVGRenderer {
 
     const nodeSize = isLargeTree ? Math.max(1, (config.nodeSize || 4) * 0.6) : (config.nodeSize || 4);
     const baseBranchWidth = isLargeTree ? Math.max(0.5, (config.branchWidth || 1) * 0.8) : (config.branchWidth || 1);
-    
+
     const nodeDepth = new Map<string, number>();
     const maxDepth = this.calculateNodeDepths(tree.root, 0, nodeDepth);
     const depthRange = Math.max(1, maxDepth);
@@ -187,32 +314,22 @@ export class SVGRenderer {
     }
 
     const leafNodeIds = new Set(Object.keys(layoutResult.nodes).filter(id => isLeafNode(tree.root, id)));
-    
 
-    // FIX: Use pure radial direction (node → away from tree center) for label
-    // alignment in circular/radial/unrooted layouts.
-    //
-    // The previous approach used the parent→child branch vector, which works for
-    // the last straight segment but fails whenever the layout uses elbow/L-shape
-    // connections: the parent position is the *bend point*, not the true center,
-    // so the angle deviates from the true radial direction and labels appear
-    // misaligned with their branches.
-    //
-    // The correct reference direction for a radially arranged label is always the
-    // vector from the tree's geometric center outward through the leaf node.
-    // This guarantees label text is collinear with the radial branch tip regardless
-    // of how the internal branches are routed.
+    // Precompute tree center once for circular/radial/unrooted branch paths and labels.
+    const { cx: treeCx, cy: treeCy } = this.computeTreeCenter();
+
+    // Radial label direction: vector from tree center outward through each node.
     const labelDirection = new Map<string, { angle: number; ux: number; uy: number }>();
     if (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted') {
-      const { cx: treeCxLabel, cy: treeCyLabel } = this.computeTreeCenter();
       Object.entries(layoutResult.nodes).forEach(([id, pos]) => {
-        const dx = pos.x - treeCxLabel;
-        const dy = pos.y - treeCyLabel;
+        const dx = pos.x - treeCx;
+        const dy = pos.y - treeCy;
         const len = Math.hypot(dx, dy) || 1;
         labelDirection.set(id, { angle: Math.atan2(dy, dx), ux: dx / len, uy: dy / len });
       });
     }
 
+    // ── Branch paths ──────────────────────────────────────────────────────────
     this.g.selectAll('.link')
       .data(layoutResult.links)
       .enter()
@@ -221,28 +338,7 @@ export class SVGRenderer {
       .attr('d', d => {
         const source = layoutResult.nodes[d.source];
         const target = layoutResult.nodes[d.target];
-
-        if (layoutResult.type === 'rectangular') {
-          const isTargetLeaf = !findNodeById(tree.root, d.target)?.children;
-          if (isTargetLeaf) {
-            const horizontalEndX = Math.max(source.x, target.x) + 18;
-            return `M ${source.x} ${source.y} L ${target.x} ${source.y} L ${target.x} ${target.y} L ${horizontalEndX} ${target.y}`;
-          } else {
-            return `M ${source.x} ${source.y} L ${target.x} ${source.y} L ${target.x} ${target.y}`;
-          }
-        }
-
-        if (layoutResult.type === 'circular') {
-          const midX = (source.x + target.x) / 2;
-          const midY = (source.y + target.y) / 2;
-          return `M ${source.x} ${source.y} L ${midX} ${source.y} L ${midX} ${target.y} L ${target.x} ${target.y}`;
-        }
-        
-        if (layoutResult.type === 'radial' || layoutResult.type === 'unrooted') {
-          return `M ${source.x} ${source.y} L ${target.x} ${target.y}`;
-        }
-
-        return `M ${source.x} ${source.y} L ${target.x} ${target.y}`;
+        return this.buildBranchPath(source, target, layoutResult.type, treeCx, treeCy);
       })
       .attr('stroke', d => {
         if (cladeColorMap) {
@@ -257,6 +353,7 @@ export class SVGRenderer {
       .attr('stroke-opacity', (layoutResult.type === 'circular' || layoutResult.type === 'radial') ? 0.75 : 1)
       .attr('fill', 'none');
 
+    // ── Node circles ──────────────────────────────────────────────────────────
     const allNodes = Object.entries(layoutResult.nodes);
     const circularLeafNodes = allNodes.filter(([id]) => leafNodeIds.has(id));
 
@@ -270,9 +367,7 @@ export class SVGRenderer {
       .append('circle')
       .attr('class', 'node')
       .attr('data-node-id', d => d[0])
-      .attr('cx', d => {
-        return d[1].x;
-      })
+      .attr('cx', d => d[1].x)
       .attr('cy', d => d[1].y)
       .attr('r', nodeSize)
       .attr('fill', config.nodeColor || '#fff')
@@ -330,7 +425,7 @@ export class SVGRenderer {
       });
 
     this.applySelectedNodeStyles(nodeSize);
-    
+
     this.g.append('rect')
       .attr('class', 'zoom-reset')
       .attr('width', config.width)
@@ -338,14 +433,15 @@ export class SVGRenderer {
       .attr('fill', 'transparent')
       .style('pointer-events', 'none');
 
+    // ── Labels ────────────────────────────────────────────────────────────────
     let showLabels = true;
     uiStore.subscribe(state => showLabels = state.showLabels)();
 
     if (showLabels) {
       let labelData = (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted')
-        ? this.selectCircularLabels(circularLeafNodes, centerX, centerY, isLargeTree)
+        ? this.selectCircularLabels(circularLeafNodes, treeCx, treeCy, isLargeTree)
         : circularLeafNodes;
-    
+
       if (layoutResult.type === 'rectangular') {
         labelData = this.optimizeRectangularLabels(labelData, isLargeTree);
       }
@@ -363,8 +459,8 @@ export class SVGRenderer {
           } else {
             if (labelData.length > 300) return '4px';
             if (labelData.length > 150) return '5px';
-            if (labelData.length > 80) return '6px';
-            if (labelData.length > 40) return '7px';
+            if (labelData.length > 80)  return '6px';
+            if (labelData.length > 40)  return '7px';
             return isLargeTree ? '8px' : '10px';
           }
         })
@@ -373,10 +469,10 @@ export class SVGRenderer {
           if (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted') {
             const offset = this.getCircularLabelOffset(isLargeTree);
             const dir = labelDirection.get(d[0]);
-            const ux = dir ? dir.ux : Math.cos(Math.atan2(d[1].y - centerY, d[1].x - centerX));
+            const ux = dir ? dir.ux : Math.cos(Math.atan2(d[1].y - treeCy, d[1].x - treeCx));
             return d[1].x + offset * ux;
           } else if (layoutResult.type === 'rectangular') {
-            return d[1].x + 22;
+            return d[1].x + 8;
           }
           return d[1].x + 8;
         })
@@ -384,7 +480,7 @@ export class SVGRenderer {
           if (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted') {
             const offset = this.getCircularLabelOffset(isLargeTree);
             const dir = labelDirection.get(d[0]);
-            const uy = dir ? dir.uy : Math.sin(Math.atan2(d[1].y - centerY, d[1].x - centerX));
+            const uy = dir ? dir.uy : Math.sin(Math.atan2(d[1].y - treeCy, d[1].x - treeCx));
             return d[1].y + offset * uy;
           } else if (layoutResult.type === 'rectangular') {
             return d[1].y;
@@ -395,7 +491,7 @@ export class SVGRenderer {
           if (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted') {
             const offset = this.getCircularLabelOffset(isLargeTree);
             const dir = labelDirection.get(d[0]);
-            const angle = dir ? dir.angle : Math.atan2(d[1].y - centerY, d[1].x - centerX);
+            const angle = dir ? dir.angle : Math.atan2(d[1].y - treeCy, d[1].x - treeCx);
             const ux = dir ? dir.ux : Math.cos(angle);
             const uy = dir ? dir.uy : Math.sin(angle);
             const labelX = d[1].x + offset * ux;
@@ -409,14 +505,11 @@ export class SVGRenderer {
           return node?.name || '';
         });
     }
-    
+
     if (config.annotationDisplayMode !== 'legend') {
       this.renderAnnotations(config, cladeColorMap);
     }
 
-    // Auto-center rectangular and unrooted layouts on every fresh render.
-    // Circular / radial layouts are already produced centered in their own
-    // coordinate space by the layout algorithm, so they don't need this.
     if (layoutResult.type === 'rectangular' || layoutResult.type === 'unrooted') {
       this.autoCenter(config);
     }
@@ -447,6 +540,10 @@ export class SVGRenderer {
     const leafNodes = Object.entries(layoutResult.nodes).filter(([id]) => isLeafNode(tree.root, id));
     const leafNodeIds = new Set(leafNodes.map(([id]) => id));
 
+    // Precompute tree center for circular/radial arc paths and labels.
+    const { cx: treeCx, cy: treeCy } = this.computeTreeCenter();
+
+    // ── Branch paths ──────────────────────────────────────────────────────────
     this.g.selectAll('.link')
       .data(layoutResult.links)
       .enter()
@@ -455,28 +552,7 @@ export class SVGRenderer {
       .attr('d', d => {
         const source = layoutResult.nodes[d.source];
         const target = layoutResult.nodes[d.target];
-
-        if (layoutResult.type === 'circular') {
-          const midX = (source.x + target.x) / 2;
-          const midY = (source.y + target.y) / 2;
-          return `M ${source.x} ${source.y} L ${midX} ${source.y} L ${midX} ${target.y} L ${target.x} ${target.y}`;
-        }
-
-        if (layoutResult.type === 'rectangular') {
-          const isTargetLeaf = leafNodeIds.has(d.target);
-          if (isTargetLeaf) {
-            const horizontalEndX = Math.max(source.x, target.x) + 18;
-            return `M ${source.x} ${source.y} L ${target.x} ${source.y} L ${target.x} ${target.y} L ${horizontalEndX} ${target.y}`;
-          } else {
-            return `M ${source.x} ${source.y} L ${target.x} ${source.y} L ${target.x} ${target.y}`;
-          }
-        }
-
-        if (layoutResult.type === 'radial') {
-          return `M ${source.x} ${source.y} L ${target.x} ${target.y}`;
-        }
-
-        return `M ${source.x} ${source.y} L ${target.x} ${target.y}`;
+        return this.buildBranchPath(source, target, layoutResult.type, treeCx, treeCy);
       })
       .attr('stroke', d => {
         if (cladeColorMap) {
@@ -499,18 +575,17 @@ export class SVGRenderer {
       })
       .attr('fill', 'none');
 
+    // ── Node circles ──────────────────────────────────────────────────────────
     const largeTreeNodeData = layoutResult.type === 'circular' && leafNodes.length > 300 ? [] : leafNodes;
-
     const largeNodeSize = nodeSize * 0.8;
+
     this.g.selectAll('.node')
       .data(largeTreeNodeData)
       .enter()
       .append('circle')
       .attr('class', 'node')
       .attr('data-node-id', d => d[0])
-      .attr('cx', d => {
-        return d[1].x;
-      })
+      .attr('cx', d => d[1].x)
       .attr('cy', d => d[1].y)
       .attr('r', largeNodeSize)
       .attr('fill', config.nodeColor || '#fff')
@@ -566,7 +641,7 @@ export class SVGRenderer {
         this.applySelectedNodeStyles(largeNodeSize);
         event.preventDefault();
       });
-    
+
     this.g.append('rect')
       .attr('class', 'zoom-reset')
       .attr('width', config.width)
@@ -574,35 +649,22 @@ export class SVGRenderer {
       .attr('fill', 'transparent')
       .style('pointer-events', 'none');
 
+    // ── Labels ────────────────────────────────────────────────────────────────
     let showLabels = true;
     uiStore.subscribe(state => showLabels = state.showLabels)();
 
-    // FIX: Use pure radial direction (node → away from tree center) for label
-    // alignment in circular/radial/unrooted layouts.
-    //
-    // The previous approach used the parent→child branch vector, which works for
-    // the last straight segment but fails whenever the layout uses elbow/L-shape
-    // connections: the parent position is the *bend point*, not the true center,
-    // so the angle deviates from the true radial direction and labels appear
-    // misaligned with their branches.
-    //
-    // The correct reference direction for a radially arranged label is always the
-    // vector from the tree's geometric center outward through the leaf node.
-    // This guarantees label text is collinear with the radial branch tip regardless
-    // of how the internal branches are routed.
     const labelDirection = new Map<string, { angle: number; ux: number; uy: number }>();
     if (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted') {
-      const { cx: treeCxLabel, cy: treeCyLabel } = this.computeTreeCenter();
       Object.entries(layoutResult.nodes).forEach(([id, pos]) => {
-        const dx = pos.x - treeCxLabel;
-        const dy = pos.y - treeCyLabel;
+        const dx = pos.x - treeCx;
+        const dy = pos.y - treeCy;
         const len = Math.hypot(dx, dy) || 1;
         labelDirection.set(id, { angle: Math.atan2(dy, dx), ux: dx / len, uy: dy / len });
       });
     }
 
     if (showLabels && (layoutResult.type === 'circular' || layoutResult.type === 'radial' || layoutResult.type === 'unrooted')) {
-      const sampledLabels = this.selectCircularLabels(leafNodes, centerX, centerY, true);
+      const sampledLabels = this.selectCircularLabels(leafNodes, treeCx, treeCy, true);
 
       this.g.selectAll('.label')
         .data(sampledLabels)
@@ -616,19 +678,19 @@ export class SVGRenderer {
         .attr('x', d => {
           const offset = this.getCircularLabelOffset(true);
           const dir = labelDirection.get(d[0]);
-          const ux = dir ? dir.ux : Math.cos(Math.atan2(d[1].y - centerY, d[1].x - centerX));
+          const ux = dir ? dir.ux : Math.cos(Math.atan2(d[1].y - treeCy, d[1].x - treeCx));
           return d[1].x + offset * ux;
         })
         .attr('y', d => {
           const offset = this.getCircularLabelOffset(true);
           const dir = labelDirection.get(d[0]);
-          const uy = dir ? dir.uy : Math.sin(Math.atan2(d[1].y - centerY, d[1].x - centerX));
+          const uy = dir ? dir.uy : Math.sin(Math.atan2(d[1].y - treeCy, d[1].x - treeCx));
           return d[1].y + offset * uy;
         })
         .attr('transform', d => {
           const offset = this.getCircularLabelOffset(true);
           const dir = labelDirection.get(d[0]);
-          const angle = dir ? dir.angle : Math.atan2(d[1].y - centerY, d[1].x - centerX);
+          const angle = dir ? dir.angle : Math.atan2(d[1].y - treeCy, d[1].x - treeCx);
           const ux = dir ? dir.ux : Math.cos(angle);
           const uy = dir ? dir.uy : Math.sin(angle);
           const labelX = d[1].x + offset * ux;
@@ -691,7 +753,6 @@ export class SVGRenderer {
     return isLargeTree ? 10 : 12;
   }
 
-
   updateTransform(transform: string): void {
     if (transform) {
       this.g.attr('transform', `${this.baseTransform} ${transform}`);
@@ -740,8 +801,6 @@ export class SVGRenderer {
 
     const medianGap = this.median(gaps);
     const fontSizePx = isLargeTree ? 8 : 10;
-    // 为了在大树上尽量多展示叶标签，这里放宽垂直间距要求：
-    // 允许标签行之间略有接触/轻微重叠，只在极端拥挤时才抽样隐藏部分标签。
     const requiredSpacing = Math.max(4, fontSizePx * 0.7);
     if (medianGap >= requiredSpacing) {
       return sortedLabels;
@@ -774,13 +833,13 @@ export class SVGRenderer {
   ): void {
     const nodePos = layoutResult.nodes[nodeId];
     if (!nodePos) return;
-    
+
     const centerX = config.width / 2;
     const centerY = config.height / 2;
     const scale = 2;
     const translateX = centerX - nodePos.x * scale;
     const translateY = centerY - nodePos.y * scale;
-    
+
     if (typeof uiStore !== 'undefined') {
       uiStore.setSelectionHighlightColor(null);
       uiStore.selectNode(nodeId);
@@ -807,8 +866,6 @@ export class SVGRenderer {
     let minWidth = baseBranchWidth * 0.5;
     let maxWidth = baseBranchWidth * 2;
 
-    // 圆形/径向/无根树中主干层级感更重要：加粗靠近根节点的分支，
-    // 同时降低末端分支宽度，提升根分支与末端分支可辨识度。
     if (layoutType === 'circular' || layoutType === 'radial' || layoutType === 'unrooted') {
       minWidth = baseBranchWidth * 0.4;
       maxWidth = baseBranchWidth * 2.8;
@@ -880,42 +937,12 @@ export class SVGRenderer {
     const backgroundColor = config.backgroundColor || '#242424';
 
     if (this.layoutType === 'rectangular') {
-      // Rectangular tree: vertical color-strip column to the right of leaf labels
       this.renderRectangularAnnotationStrip(group, annotation, config, cladeColorMap, rows, trackWidth, layerOffset, backgroundColor);
     } else {
-      // Circular, radial, unrooted: concentric annotation ring
       this.renderCircularAnnotationRing(group, annotation, config, cladeColorMap, trackWidth, layerOffset, backgroundColor);
     }
   }
 
-  /**
-   * Rectangular-tree annotation: a vertical strip of colored rectangles
-   * aligned with each leaf row, placed to the right of the longest label.
-   *
-   * Layout:
-   *   leafMaxX  +  labelReserve  +  stripGap  +  [strip0 | gap | strip1 | ...]
-   *
-   * Each rectangle height matches the vertical spacing between adjacent leaves
-   * (with 1px gap) so rows are visually distinct.
-   */
-  /**
-   * Rectangular-tree annotation strip (vertical color column).
-   *
-   * Design principle — merge consecutive rows of the same group:
-   *   When a taxon group (e.g. "Primates") occupies many consecutive leaf rows,
-   *   drawing one rect per row produces a solid block visually, BUT when groups
-   *   are few and leaves are densely packed the row rects run edge-to-edge and
-   *   the 1px gaps become invisible noise.  Worse, when groups are few and rows
-   *   are tall the gaps look like deliberate empty bands.
-   *
-   *   Solution: run-length encode rows by resolved fill color, then draw a single
-   *   merged rectangle per contiguous same-color run.  A small fixed gap (2px) is
-   *   left between different-group blocks regardless of row density, making group
-   *   boundaries crisp without wasting space inside a group.
-   *
-   *   For HEATMAP / BARCHART every row has a distinct value so no merging happens
-   *   (each row stays independent with 1px gap), which is the correct behaviour.
-   */
   private renderRectangularAnnotationStrip(
     group: d3.Selection<SVGGElement, unknown, null, undefined>,
     annotation: AnnotationData,
@@ -928,10 +955,9 @@ export class SVGRenderer {
   ): void {
     if (rows.length === 0) return;
 
-    // ── Position: place strip after the longest leaf label ───────────────────
     const showLabels = this.getShowLabels();
     const CHAR_WIDTH_PX = 6.4;
-    const LABEL_START_OFFSET = 22;
+    const LABEL_START_OFFSET = 8;
     let maxLabelLen = 0;
     rows.forEach(row => {
       const name = this.nodeNameById.get(row.id) || '';
@@ -942,12 +968,9 @@ export class SVGRenderer {
     const STRIP_GAP = 16;
     const baseX = leafMaxX + LABEL_START_OFFSET + labelReserve + STRIP_GAP + layerOffset;
 
-    // ── Row metrics ──────────────────────────────────────────────────────────
-    // rowSpacing: median vertical distance between adjacent leaf rows (px)
-    const rowSpacing = this.getAnnotationRowHeight(rows) / 0.72; // undo clamp factor to get raw gap
-    const GROUP_GAP = 2; // px gap between different-color blocks
+    const rowSpacing = this.getAnnotationRowHeight(rows) / 0.72;
+    const GROUP_GAP = 2;
 
-    // ── Resolve fill color for every row ─────────────────────────────────────
     const isContinuous = annotation.type === 'HEATMAP' || annotation.type === 'BARCHART';
     const resolvedRows = rows.map(row => {
       const branchColor = this.getBranchColorForNode(row.id, config, cladeColorMap);
@@ -971,7 +994,6 @@ export class SVGRenderer {
       return { ...row, fillColor };
     });
 
-    // ── Column title ─────────────────────────────────────────────────────────
     const titleY = resolvedRows[0].pos.y - rowSpacing - 4;
     group.append('text')
       .attr('x', baseX + trackWidth / 2)
@@ -983,9 +1005,7 @@ export class SVGRenderer {
       .attr('dominant-baseline', 'auto')
       .text(annotation.name || annotation.type);
 
-    // ── Draw rectangles ───────────────────────────────────────────────────────
     if (isContinuous) {
-      // Continuous scale: one slim rect per row with 1px inter-row gap
       resolvedRows.forEach(row => {
         const rectH = Math.max(2, rowSpacing - 1);
         group.append('rect')
@@ -999,9 +1019,6 @@ export class SVGRenderer {
           .attr('rx', 0);
       });
     } else {
-      // Categorical: run-length encode by color, merge each run into one block.
-      // Between different-color blocks leave GROUP_GAP px so group boundaries
-      // are always visible even when leaves are densely packed.
       type Run = { fillColor: string; startY: number; endY: number };
       const runs: Run[] = [];
       let cur: Run | null = null;
@@ -1015,14 +1032,12 @@ export class SVGRenderer {
           if (cur) runs.push(cur);
           cur = { fillColor: row.fillColor, startY: top, endY: bottom };
         } else {
-          cur.endY = bottom; // extend current run
+          cur.endY = bottom;
         }
         if (i === resolvedRows.length - 1 && cur) runs.push(cur);
       });
 
-      runs.forEach((run, i) => {
-        const isLast = i === runs.length - 1;
-        // Inset top/bottom by half GROUP_GAP so adjacent blocks have a clean gap
+      runs.forEach((run) => {
         const inset = runs.length > 1 ? GROUP_GAP / 2 : 0;
         const y = run.startY + inset;
         const h = Math.max(2, run.endY - run.startY - inset * 2);
@@ -1085,40 +1100,6 @@ export class SVGRenderer {
     return this.blendColors(color, branchColor, 0.55);
   }
 
-  /**
-   * Render circular annotation ring.
-   *
-   * ── Root cause of the original misalignment bug ───────────────────────────
-   *
-   * The old code computed the ring center as:
-   *
-   *   const layoutCenterX = (config.layoutWidth || config.width) / 2;
-   *   const layoutCenterY = (config.layoutHeight || config.height) / 2;
-   *
-   * This is the *canvas* midpoint, NOT the geometric center of the tree nodes.
-   * The circular layout algorithm places the root at the center of its own
-   * coordinate space, which is typically close to (layoutRadius, layoutRadius)
-   * inside the layout, but that origin is then embedded into the SVG canvas
-   * at a position that depends on padding, margins, and initial translate.
-   *
-   * Because annotation layers are children of `this.g` (the same group as the
-   * tree nodes), every coordinate inside that group is in node-coordinate
-   * space.  Using config.width/2 as the center puts the ring at the canvas
-   * origin (top-left) instead of around the tree.
-   *
-   * ── Fix ───────────────────────────────────────────────────────────────────
-   *
-   * 1. `computeTreeCenter()` calculates the bounding-box midpoint of all node
-   *    positions.  For a symmetric circular layout this equals the layout
-   *    center exactly; for asymmetric / unrooted layouts it is still the best
-   *    available approximation.
-   *
-   * 2. All arc paths produced by `d3.arc()` are centered at (0, 0) by
-   *    default.  We translate each `<path>` element by `(treeCx, treeCy)` so
-   *    the arcs are concentric with the tree circle.
-   *
-   * 3. The title label and max-radius computation also use `(treeCx, treeCy)`.
-   */
   private renderCircularAnnotationRing(
     group: d3.Selection<SVGGElement, unknown, null, undefined>,
     annotation: AnnotationData,
@@ -1128,16 +1109,12 @@ export class SVGRenderer {
     layerOffset: number,
     backgroundColor: string
   ): void {
-    // Only leaf nodes get annotation arcs
     let rows = this.getAnnotationRows(annotation);
     rows = rows.filter(row => this.leafNodeIdSet.has(row.id));
     if (rows.length === 0) return;
 
-    // ── FIX: use node-coordinate-space center ────────────────────────────────
     const { cx: treeCx, cy: treeCy } = this.computeTreeCenter();
-    // ─────────────────────────────────────────────────────────────────────────
 
-    // Maximum distance from tree center to any leaf node (= visual radius of the tree)
     let treeMaxRadius = 0;
     Object.entries(this.nodes || {}).forEach(([id, pos]) => {
       if (pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
@@ -1147,25 +1124,12 @@ export class SVGRenderer {
     });
     treeMaxRadius = Math.max(50, treeMaxRadius);
 
-    // ── Label clearance ────────────────────────────────────────────────────────
-    // Leaf labels are rendered radially outward from each leaf node.
-    // To avoid the annotation ring occluding them, we estimate the radial space
-    // consumed by the longest label and add it as a mandatory gap.
-    //
-    // Estimation strategy:
-    //   • font size for circular layouts is 8–10 px (see getCircularLabelFontSize).
-    //     We use 9 px as the average character width multiplier (≈ 0.55 × font-size
-    //     for a proportional font, giving ~5 px/char), which is conservative enough
-    //     to work for both dense and sparse trees.
-    //   • We only consider leaf nodes that actually have labels (non-empty name).
-    //   • The result is clamped to a reasonable range so tiny or huge trees don't
-    //     produce absurd offsets.
     const showLabels = this.getShowLabels();
     let labelRadialClearance = 0;
     if (showLabels) {
       const LABEL_OFFSET_PX = this.getCircularLabelOffset(Object.keys(this.nodes || {}).length > 500);
-      const CHAR_WIDTH_PX   = 5.2;   // empirical: ~0.55 × 9.5 px avg font size
-      const LABEL_GAP_PX    = 6;     // breathing room between label tail and ring inner edge
+      const CHAR_WIDTH_PX   = 5.2;
+      const LABEL_GAP_PX    = 6;
 
       let maxLabelLen = 0;
       this.leafNodeIdSet.forEach(id => {
@@ -1176,18 +1140,15 @@ export class SVGRenderer {
       const estimatedLabelWidth = maxLabelLen * CHAR_WIDTH_PX;
       labelRadialClearance = this.clamp(
         LABEL_OFFSET_PX + estimatedLabelWidth + LABEL_GAP_PX,
-        16,   // minimum: even with no visible labels keep a small gap
-        220   // maximum: guard against pathologically long taxon names
+        16,
+        220
       );
     } else {
-      labelRadialClearance = 16; // no labels → minimal gap
+      labelRadialClearance = 16;
     }
-    // ──────────────────────────────────────────────────────────────────────────
 
-    // The annotation ring sits outside treeMaxRadius + label clearance
     const ringRadius = treeMaxRadius + labelRadialClearance + layerOffset;
 
-    // Sort leaves by angle relative to the true tree center
     const sortedLeaves = rows.sort((a, b) => {
       const angleA = Math.atan2(a.pos.y - treeCy, a.pos.x - treeCx);
       const angleB = Math.atan2(b.pos.y - treeCy, b.pos.x - treeCx);
@@ -1207,9 +1168,6 @@ export class SVGRenderer {
       const minAngleWidth = 0.05;
       endAngle = startAngle + Math.max(minAngleWidth, endAngle - startAngle);
 
-      // d3.arc() generates paths centered at (0, 0).
-      // We apply `transform="translate(treeCx, treeCy)"` on every <path>
-      // to place each arc correctly in node-coordinate space.
       const arc = d3.arc()
         .innerRadius(ringRadius)
         .outerRadius(ringRadius + trackWidth)
@@ -1235,18 +1193,14 @@ export class SVGRenderer {
         );
       }
 
-      // ── KEY FIX: translate arc from SVG origin (0,0) to tree center ─────
       group.append('path')
         .attr('d', arc as any)
         .attr('transform', `translate(${treeCx}, ${treeCy})`)
         .attr('fill', fillColor)
         .attr('stroke', d3.hsl(fillColor).darker(0.75).formatHex())
         .attr('stroke-width', 0.5);
-      // ────────────────────────────────────────────────────────────────────
     });
 
-    // 圆形/径向树中，环形注释本身已表达图层信息；标题常与色带和标签竞争视觉空间。
-    // 默认不显示标题，仅在显式配置 showTitle=true 时渲染，并放在路径之后避免被遮挡。
     if (annotation.config?.showTitle === true) {
       const titleRadius = ringRadius + trackWidth / 2 + 10;
       const titleAngle = -Math.PI / 2;
@@ -1267,7 +1221,6 @@ export class SVGRenderer {
     const color = cladeColorMap?.get(nodeId) || fallback;
     return ensureContrast(color, config.backgroundColor || '#242424');
   }
-
 
   private normalizeValue(value: unknown, minValue?: number, maxValue?: number, defaultMax: number = 1): number {
     const numeric = Number(value);
@@ -1330,7 +1283,7 @@ export class SVGRenderer {
 // Create renderer instance
 export const createRenderer = (container: HTMLElement, config: RenderConfig): any => {
   const renderer = new SVGRenderer(container, config);
-  
+
   const originalRender = renderer.render;
   renderer.render = function(tree: any, layoutResult: LayoutResult, config: RenderConfig) {
     this.tree = tree;
@@ -1339,6 +1292,6 @@ export const createRenderer = (container: HTMLElement, config: RenderConfig): an
     this.rebuildNodeIndexes(tree);
     originalRender.call(this, tree, layoutResult, config);
   };
-  
+
   return renderer;
 };
